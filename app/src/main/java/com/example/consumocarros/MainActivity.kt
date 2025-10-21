@@ -1,6 +1,5 @@
 package com.example.consumocarros
 
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -18,7 +17,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_mainprueba)
 
         editTextMake = findViewById(R.id.editTextMake)
         editTextModel = findViewById(R.id.editTextModel)
