@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <org.osmdroid.views.MapView
+        android:id="@+id/map"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Panel lateral simplificado -->
+    <LinearLayout
+        android:id="@+id/panel"
+        android:orientation="vertical"
+        android:background="#CCFFFFFF"
+        android:padding="8dp"
+        android:layout_width="320dp"
+        android:layout_height="match_parent"
+        android:layout_alignParentEnd="true">
+
+        <Button
+            android:id="@+id/btn_locate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Usar mi ubicación" />
+
+        <Button
+            android:id="@+id/btn_clear"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Limpiar" />
+
+        <EditText
+            android:id="@+id/dest_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Escribe destino..." />
+
+        <ListView
+            android:id="@+id/suggestions"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Haz clic para marcar destino."
+            android:paddingTop="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Rutas encontradas:" style="@android:style/TextAppearance.Medium"
+            android:paddingTop="8dp" />
+
+        <ListView
+            android:id="@+id/routes_list"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+    </LinearLayout>
+
+</RelativeLayout>

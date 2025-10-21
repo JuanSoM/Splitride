@@ -38,8 +38,10 @@ android {
     }
     buildFeatures {
         compose = true
+        viewBinding = true
     }
 }
+
 
 dependencies {
     implementation(libs.androidx.core.ktx)
@@ -58,4 +60,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    implementation("org.osmdroid:osmdroid-android:6.1.14")
+    implementation("com.squareup.okhttp3:okhttp:4.10.0")
+    implementation("com.google.code.gson:gson:2.10.1")
 }
