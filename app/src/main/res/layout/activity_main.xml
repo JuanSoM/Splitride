@@ -7,6 +7,7 @@
     android:background="@drawable/gradient_wallpaper">
 
     <ScrollView
+        android:id="@+id/scrollView2"
         android:layout_width="409dp"
         android:layout_height="729dp"
         android:layout_marginStart="1dp"
@@ -21,57 +22,152 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" >
+            android:orientation="vertical">
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
+                android:layout_height="136dp">
 
                 <Button
                     android:id="@+id/botoncuenta"
                     android:layout_width="80dp"
                     android:layout_height="80dp"
-                    android:layout_marginStart="74dp"
-                    android:layout_marginTop="1dp"
-                    android:layout_marginEnd="6dp"
                     android:layout_weight="1"
                     android:background="@drawable/iconocuenta"
                     app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/textView"
-                    app:layout_constraintTop_toTopOf="parent" />
+                    app:layout_constraintHorizontal_bias="0.951"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintVertical_bias="0.464" />
 
                 <TextView
                     android:id="@+id/textView"
-                    android:layout_width="233dp"
-                    android:layout_height="wrap_content"
+                    android:layout_width="246dp"
+                    android:layout_height="44dp"
                     android:layout_marginStart="16dp"
-                    android:layout_marginTop="23dp"
-                    android:layout_marginBottom="23dp"
+                    android:layout_marginTop="50dp"
+                    android:layout_marginEnd="64dp"
+                    android:layout_marginBottom="51dp"
                     android:fontFamily="@font/lexend_giga_medium"
                     android:text="Hola Marta"
                     android:textAlignment="textStart"
                     android:textColor="#FFFFFF"
                     android:textSize="25sp"
                     app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toStartOf="@+id/botoncuenta"
+                    app:layout_constraintHorizontal_bias="0.0"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent" />
-
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintVertical_bias="0.0" />
             </androidx.constraintlayout.widget.ConstraintLayout>
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
+                android:layout_height="match_parent"
+                android:orientation="vertical">
 
-                <Button
-                    android:id="@+id/button3"
+                <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Button"
-                    tools:layout_editor_absoluteX="0dp"
-                    tools:layout_editor_absoluteY="0dp" />
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                    android:layout_height="match_parent">
+
+                    <Button
+                        android:id="@+id/button"
+                        android:layout_width="375dp"
+                        android:layout_height="140dp"
+                        android:background="@drawable/rounded_button"
+                        android:text="Button"
+                        tools:layout_editor_absoluteX="17dp"
+                        tools:layout_editor_absoluteY="16dp"
+                        tools:ignore="MissingConstraints" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1">
+
+                        <Button
+                            android:id="@+id/button4"
+                            android:layout_width="140dp"
+                            android:layout_height="225dp"
+                            android:layout_marginStart="12dp"
+                            android:layout_marginTop="29dp"
+                            android:layout_marginEnd="16dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/rounded_button"
+                            android:text="Button"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toEndOf="@+id/button8"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <Button
+                            android:id="@+id/button8"
+                            android:layout_width="225dp"
+                            android:layout_height="225dp"
+                            android:layout_marginStart="16dp"
+                            android:layout_marginTop="29dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/rounded_button"
+                            android:text="Button"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1">
+
+                        <Button
+                            android:id="@+id/button3"
+                            android:layout_width="375dp"
+                            android:layout_height="225dp"
+                            android:layout_marginStart="18dp"
+                            android:layout_marginTop="32dp"
+                            android:layout_marginEnd="16dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/rounded_button"
+                            android:text="Button"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
 
         </LinearLayout>
     </ScrollView>
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="350dp"
+        android:layout_height="200dp"
+        android:layout_marginTop="-120dp"
+        android:background="@drawable/rounded_menu"
+        android:minHeight="?attr/actionBarSize"
+        android:theme="?attr/actionBarTheme"
+        app:buttonGravity="center_vertical|bottom"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/scrollView2" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
