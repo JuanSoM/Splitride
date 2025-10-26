@@ -133,7 +133,7 @@ class MapActivity : AppCompatActivity() {
         })
 
         // iniciar geolocalización automática
-        locateAndSetOrigin()
+        //locateAndSetOrigin()
     }
 
     override fun onResume() {

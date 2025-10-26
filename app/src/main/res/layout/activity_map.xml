@@ -1,67 +1,154 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_gradient_orange"
+    tools:context=".MapActivity">
 
+    <!-- 🌍 Mapa principal -->
     <org.osmdroid.views.MapView
         android:id="@+id/map"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Panel lateral simplificado -->
+    <!-- 🔍 Panel superior con buscadores -->
     <LinearLayout
-        android:id="@+id/panel"
+        android:id="@+id/search_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="#CCFFFFFF"
-        android:padding="8dp"
-        android:layout_width="320dp"
-        android:layout_height="match_parent"
-        android:layout_alignParentEnd="true">
+        android:padding="12dp"
+        android:layout_marginTop="30dp"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:background="#B3FFFFFF"
+        android:elevation="4dp"
+        android:layout_marginHorizontal="16dp"
+        android:clipToOutline="true"
+        android:backgroundTintMode="src_over">
 
-        <Button
-            android:id="@+id/btn_locate"
+        <EditText
+            android:id="@+id/origin_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Usar mi ubicación" />
-
-        <Button
-            android:id="@+id/btn_clear"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Limpiar" />
+            android:hint="Origen"
+            android:drawableStart="@android:drawable/ic_menu_mylocation"
+            android:background="@drawable/rounded_input"
+            android:padding="10dp"
+            android:textColor="#000"
+            android:inputType="text" />
 
         <EditText
             android:id="@+id/dest_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Escribe destino..." />
+            android:hint="Destino"
+            android:drawableStart="@android:drawable/ic_menu_search"
+            android:background="@drawable/rounded_input"
+            android:padding="10dp"
+            android:textColor="#000"
+            android:layout_marginTop="8dp"
+            android:inputType="text" />
+    </LinearLayout>
 
-        <ListView
-            android:id="@+id/suggestions"
-            android:layout_width="match_parent"
-            android:layout_height="120dp"
-            android:visibility="gone" />
+    <!-- 🧭 Botones de acción (invisibles si no los usas aún) -->
+    <Button
+        android:id="@+id/btn_locate"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
-        <TextView
-            android:id="@+id/hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Haz clic para marcar destino."
-            android:paddingTop="8dp" />
+    <Button
+        android:id="@+id/btn_clear"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Rutas encontradas:" style="@android:style/TextAppearance.Medium"
-            android:paddingTop="8dp" />
+    <!-- 💬 Texto de ayuda -->
+    <TextView
+        android:id="@+id/hint"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
+    <!-- 🗺️ Lista de sugerencias -->
+    <ListView
+        android:id="@+id/suggestions"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+    <!-- 🧩 Tarjetas de rutas en la parte inferior -->
+    <LinearLayout
+        android:id="@+id/routes_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_alignParentBottom="true"
+        android:padding="16dp"
+        android:layout_marginBottom="24dp"
+        android:gravity="center_horizontal">
+
+        <!-- Título y lista de rutas -->
         <ListView
             android:id="@+id/routes_list"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_height="wrap_content"
+            android:dividerHeight="4dp"
+            android:visibility="gone" />
 
+        <!-- Tarjeta Ruta 1 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/rounded_card_white"
+            android:elevation="3dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ruta 1"
+                android:textStyle="bold"
+                android:textColor="#FF6600"
+                android:textSize="16sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Centro: 11.2 km | Tiempo: 13 min"
+                android:textColor="#000"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- Tarjeta Ruta 2 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@drawable/rounded_card_white"
+            android:elevation="3dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ruta 2"
+                android:textStyle="bold"
+                android:textColor="#FF6600"
+                android:textSize="16sp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Centro: 13.5 km | Tiempo: 17 min"
+                android:textColor="#000"
+                android:textSize="14sp" />
+        </LinearLayout>
     </LinearLayout>
 
 </RelativeLayout>
