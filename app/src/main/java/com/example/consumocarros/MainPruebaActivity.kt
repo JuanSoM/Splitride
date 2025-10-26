@@ -7,7 +7,7 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 
 
-class MainActivity : ComponentActivity() {
+class MainPruebaActivity : ComponentActivity() {
 
     private lateinit var editTextMake: EditText
     private lateinit var editTextModel: EditText
