@@ -1,54 +1,87 @@
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer_layout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
 
+    <!-- Contenido principal -->
     <LinearLayout
         android:orientation="vertical"
-        android:padding="24dp"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="match_parent">
 
-        <EditText
-            android:id="@+id/editTextMake"
-            android:hint="Marca (ej. Toyota)"
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
 
-        <EditText
-            android:id="@+id/editTextModel"
-            android:hint="Modelo (ej. Prius)"
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+            android:layout_height="match_parent">
 
-        <EditText
-            android:id="@+id/editTextYear"
-            android:hint="Año (ej. 2020)"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="number"/>
+            <LinearLayout
+                android:orientation="vertical"
+                android:padding="24dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
 
-        <Button
-            android:id="@+id/buttonBuscar"
-            android:text="Buscar consumo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"/>
+                <EditText
+                    android:id="@+id/editTextMake"
+                    android:hint="Marca (ej. Toyota)"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"/>
 
-        <Button
-            android:id="@+id/buttonMapa"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Abrir Mapa"
-            android:layout_marginTop="16dp"/>
+                <EditText
+                    android:id="@+id/editTextModel"
+                    android:hint="Modelo (ej. Prius)"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"/>
 
+                <EditText
+                    android:id="@+id/editTextYear"
+                    android:hint="Año (ej. 2020)"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"/>
 
-        <TextView
-            android:id="@+id/textViewResultado"
-            android:textSize="16sp"
-            android:layout_marginTop="24dp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+                <Button
+                    android:id="@+id/buttonBuscar"
+                    android:text="Buscar consumo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"/>
 
+                <Button
+                    android:id="@+id/buttonMapa"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Abrir Mapa"
+                    android:layout_marginTop="16dp"/>
+
+                <TextView
+                    android:id="@+id/textViewResultado"
+                    android:textSize="16sp"
+                    android:layout_marginTop="24dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"/>
+
+            </LinearLayout>
+        </ScrollView>
     </LinearLayout>
-</ScrollView>
+
+    <!-- Menú lateral -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:fitsSystemWindows="true"
+        android:background="@android:color/white"
+        app:menu="@menu/drawer_menu" />
+
+</androidx.drawerlayout.widget.DrawerLayout>
 
