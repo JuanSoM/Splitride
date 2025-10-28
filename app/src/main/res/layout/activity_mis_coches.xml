@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:padding="16dp"
@@ -6,22 +7,15 @@
 
     <EditText
         android:id="@+id/editTextCar"
-        android:hint="Añadir coche (ej. Toyota Prius 2020)"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:hint="Marca Modelo (Año)"/>
 
     <Button
         android:id="@+id/buttonAdd"
-        android:text="Añadir coche"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"/>
-
-    <Button
-        android:id="@+id/buttonDelete"
-        android:text="Borrar coche seleccionado"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:text="Añadir"
         android:layout_marginTop="8dp"/>
 
     <ListView
@@ -29,5 +23,15 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="8dp" />
+        android:choiceMode="singleChoice"
+        android:layout_marginTop="8dp"/>
+
+    <Button
+        android:id="@+id/buttonDelete"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Borrar seleccionado"
+        android:layout_marginTop="8dp"/>
+
 </LinearLayout>
+

@@ -1,8 +1,13 @@
 package com.example.consumocarros
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MisCochesActivity : AppCompatActivity() {
 
@@ -26,6 +31,7 @@ class MisCochesActivity : AppCompatActivity() {
         listView.choiceMode = ListView.CHOICE_MODE_SINGLE
         listView.adapter = adapter
 
+        // Añadir coche
         buttonAdd.setOnClickListener {
             val carName = editTextCar.text.toString().trim()
             if (carName.isNotEmpty()) {
@@ -35,6 +41,7 @@ class MisCochesActivity : AppCompatActivity() {
             }
         }
 
+        // Borrar coche seleccionado
         buttonDelete.setOnClickListener {
             val position = listView.checkedItemPosition
             if (position != ListView.INVALID_POSITION) {
@@ -45,6 +52,38 @@ class MisCochesActivity : AppCompatActivity() {
                 adapter.notifyDataSetChanged()
             }
         }
+
+        // 🔹 Nuevo: cuando haces clic en un coche, consulta su consumo
+        listView.setOnItemClickListener { _, _, position, _ ->
+            val car = adapter.getItem(position) ?: return@setOnItemClickListener
+
+            // Intentamos extraer make, model y year del nombre
+            val parts = car.split(" ")
+            if (parts.size < 3) {
+                showDialog("Formato inválido", "El coche debe tener formato 'Marca Modelo Año'. Ejemplo: Toyota Corolla 2020")
+                return@setOnItemClickListener
+            }
+
+            val make = parts[0]
+            val model = parts[1]
+            val year = parts.last()
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val result = ApiHelper.getVehicleData(make, model, year)
+                withContext(Dispatchers.Main) {
+                    showDialog("Consumo estimado", result)
+                }
+            }
+        }
+    }
+
+    private fun showDialog(title: String, message: String) {
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
     }
 }
+
 
