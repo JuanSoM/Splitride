@@ -13,7 +13,6 @@ class MisCochesActivity : AppCompatActivity() {
 
     private lateinit var listView: ListView
     private lateinit var buttonAdd: Button
-    private lateinit var buttonDelete: Button
     private lateinit var editTextCar: EditText
     private lateinit var adapter: ArrayAdapter<String>
 
@@ -23,15 +22,13 @@ class MisCochesActivity : AppCompatActivity() {
 
         listView = findViewById(R.id.listViewCoches)
         buttonAdd = findViewById(R.id.buttonAdd)
-        buttonDelete = findViewById(R.id.buttonDelete)
         editTextCar = findViewById(R.id.editTextCar)
 
         val coches = CarStorage.getCars(this).toMutableList()
-        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_single_choice, coches)
-        listView.choiceMode = ListView.CHOICE_MODE_SINGLE
+        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, coches)
         listView.adapter = adapter
 
-        // Añadir coche
+        // ➕ Añadir coche
         buttonAdd.setOnClickListener {
             val carName = editTextCar.text.toString().trim()
             if (carName.isNotEmpty()) {
@@ -41,26 +38,13 @@ class MisCochesActivity : AppCompatActivity() {
             }
         }
 
-        // Borrar coche seleccionado
-        buttonDelete.setOnClickListener {
-            val position = listView.checkedItemPosition
-            if (position != ListView.INVALID_POSITION) {
-                val car = adapter.getItem(position)
-                CarStorage.removeCar(this, car!!)
-                adapter.remove(car)
-                listView.clearChoices()
-                adapter.notifyDataSetChanged()
-            }
-        }
-
-        // 🔹 Nuevo: cuando haces clic en un coche, consulta su consumo
+        // 👆 Click corto → mostrar consumo
         listView.setOnItemClickListener { _, _, position, _ ->
             val car = adapter.getItem(position) ?: return@setOnItemClickListener
 
-            // Intentamos extraer make, model y year del nombre
             val parts = car.split(" ")
             if (parts.size < 3) {
-                showDialog("Formato inválido", "El coche debe tener formato 'Marca Modelo Año'. Ejemplo: Toyota Corolla 2020")
+                showDialog("Formato inválido", "Usa el formato: 'Marca Modelo Año' (Ej: Toyota Corolla 2020)")
                 return@setOnItemClickListener
             }
 
@@ -75,6 +59,25 @@ class MisCochesActivity : AppCompatActivity() {
                 }
             }
         }
+
+        // ✋ Click largo → eliminar coche
+        listView.setOnItemLongClickListener { _, _, position, _ ->
+            val car = adapter.getItem(position) ?: return@setOnItemLongClickListener true
+
+            AlertDialog.Builder(this)
+                .setTitle("Eliminar coche")
+                .setMessage("¿Deseas eliminar \"$car\" de tu lista?")
+                .setPositiveButton("Sí") { _, _ ->
+                    CarStorage.removeCar(this, car)
+                    adapter.remove(car)
+                    adapter.notifyDataSetChanged()
+                    Toast.makeText(this, "Coche eliminado", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("Cancelar", null)
+                .show()
+
+            true
+        }
     }
 
     private fun showDialog(title: String, message: String) {
@@ -85,5 +88,4 @@ class MisCochesActivity : AppCompatActivity() {
             .show()
     }
 }
-
 

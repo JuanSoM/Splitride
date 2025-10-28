@@ -3,35 +3,52 @@
     android:orientation="vertical"
     android:padding="16dp"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#FAFAFA">
 
+    <!-- Campo de texto para introducir coche -->
     <EditText
         android:id="@+id/editTextCar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Marca Modelo (Año)"/>
+        android:hint="Marca Modelo Año (Ej: Toyota Corolla 2020)"
+        android:inputType="text"
+        android:padding="10dp"
+        android:background="@android:drawable/edit_text"
+        android:textSize="16sp" />
 
+    <!-- Botón para añadir -->
     <Button
         android:id="@+id/buttonAdd"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Añadir"
-        android:layout_marginTop="8dp"/>
+        android:text="Añadir coche"
+        android:textAllCaps="false"
+        android:layout_marginTop="10dp" />
 
+    <!-- Lista de coches guardados -->
     <ListView
         android:id="@+id/listViewCoches"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:choiceMode="singleChoice"
-        android:layout_marginTop="8dp"/>
+        android:layout_marginTop="12dp"
+        android:dividerHeight="1dp"
+        android:divider="#CCCCCC"
+        android:choiceMode="none"
+        android:listSelector="@android:color/darker_gray" />
 
-    <Button
-        android:id="@+id/buttonDelete"
+    <!-- Texto de ayuda al usuario -->
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Borrar seleccionado"
-        android:layout_marginTop="8dp"/>
+        android:text="💡 Pulsa un coche para ver su consumo.\nMantén pulsado para eliminarlo."
+        android:textAlignment="center"
+        android:textSize="14sp"
+        android:textColor="#555"
+        android:layout_marginTop="8dp"
+        android:padding="4dp" />
 
 </LinearLayout>
+
 
