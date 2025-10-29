@@ -19,7 +19,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
-        usuarioconectado = new Usuario("12345","admin","Admin", "Adminez");
+        usuarioconectado = (Usuario) getIntent().getSerializableExtra("usuario");
         TextView textoincio = findViewById(R.id.textViewNombre);
         Button botoncuenta = findViewById(R.id.botoncuenta);
         Button botonride = findViewById(R.id.botonRide);
