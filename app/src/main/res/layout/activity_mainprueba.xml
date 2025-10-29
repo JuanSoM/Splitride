@@ -1,41 +1,11 @@
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
 
-    <LinearLayout
-        android:orientation="vertical"
-        android:padding="24dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-        <EditText
-            android:id="@+id/editTextMake"
-            android:hint="Marca (ej. Toyota)"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
 
-        <EditText
-            android:id="@+id/editTextModel"
-            android:hint="Modelo (ej. Prius)"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+                android:layout_width="match_parent"
 
-        <EditText
-            android:id="@+id/editTextYear"
-            android:hint="Año (ej. 2020)"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="number"/>
-
-        <Button
-            android:id="@+id/buttonBuscar"
-            android:text="Buscar consumo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"/>
-
-        <Button
-            android:id="@+id/buttonMapa"
+                <Button
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Abrir Mapa"
@@ -48,7 +18,118 @@
             android:layout_marginTop="24dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
+========
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+>>>>>>>> RamaDan:app/src/main/res/layout/activity_main.xml
 
-    </LinearLayout>
-</ScrollView>
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
 
+                    <Button
+                        android:id="@+id/botonRide"
+                        android:layout_width="375dp"
+                        android:layout_height="140dp"
+                        android:layout_marginStart="17dp"
+                        android:layout_marginEnd="16dp"
+                        android:background="@drawable/rounded_button"
+                        android:text="Button"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toStartOf="parent"
+                        tools:ignore="MissingConstraints" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1">
+
+                        <Button
+                            android:id="@+id/botoncombustible"
+                            android:layout_width="140dp"
+                            android:layout_height="225dp"
+                            android:layout_marginStart="12dp"
+                            android:layout_marginTop="29dp"
+                            android:layout_marginEnd="16dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/rounded_button"
+                            android:text="Button"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toEndOf="@+id/button8"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <Button
+                            android:id="@+id/button8"
+                            android:layout_width="225dp"
+                            android:layout_height="225dp"
+                            android:layout_marginStart="16dp"
+                            android:layout_marginTop="29dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/rounded_button"
+                            android:text="Button"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1">
+
+                        <Button
+                            android:id="@+id/button3"
+                            android:layout_width="375dp"
+                            android:layout_height="225dp"
+                            android:layout_marginStart="18dp"
+                            android:layout_marginTop="32dp"
+                            android:layout_marginEnd="16dp"
+                            android:layout_weight="1"
+                            android:background="@drawable/rounded_button"
+                            android:text="Button"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="350dp"
+        android:layout_height="200dp"
+        android:layout_marginTop="820dp"
+        android:background="@drawable/rounded_menu"
+        android:minHeight="?attr/actionBarSize"
+        android:theme="?attr/actionBarTheme"
+        app:buttonGravity="center_vertical|bottom"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.491"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
