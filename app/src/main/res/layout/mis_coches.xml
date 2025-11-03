@@ -6,7 +6,9 @@
     android:layout_height="match_parent"
     android:background="@drawable/gradient_wallpaper">
 
+    <!-- Texto centrado -->
     <TextView
+        android:id="@+id/textoMisCoches"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Pantalla del Logo"
@@ -15,6 +17,54 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Toolbar igual que en activity_main.xml -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="350dp"
+        android:layout_height="200dp"
+        android:layout_marginTop="820dp"
+        android:background="@drawable/rounded_menu"
+        android:minHeight="?attr/actionBarSize"
+        android:theme="?attr/actionBarTheme"
+        app:buttonGravity="center_vertical|bottom"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.491"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- Contenedor para posicionar los botones -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!-- Botón del logo (izquierda) -->
+            <ImageButton
+                android:id="@+id/logoButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@android:color/transparent"
+                android:src="@drawable/logo"
+                android:scaleType="fitCenter"
+                android:layout_marginTop="30dp"
+                android:layout_alignParentStart="true"
+                android:layout_marginStart="30dp"
+                android:contentDescription="@string/app_name" />
+
+            <!-- Botón Home (derecha) -->
+            <ImageButton
+                android:id="@+id/homeButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@android:color/transparent"
+                android:src="@drawable/home"
+                android:scaleType="fitCenter"
+                android:layout_marginTop="30dp"
+                android:layout_alignParentEnd="true"
+                android:layout_marginEnd="30dp"
+                android:contentDescription="Ir a inicio" />
+        </RelativeLayout>
+    </androidx.appcompat.widget.Toolbar>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
