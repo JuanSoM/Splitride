@@ -6,20 +6,50 @@
     android:layout_height="match_parent"
     android:background="@drawable/gradient_wallpaper">
 
-    <!-- Texto centrado -->
+    <!-- Título -->
     <TextView
         android:id="@+id/textoMisCoches"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Pantalla del Logo"
-        android:textSize="24sp"
+        android:text="Mis Coches"
+        android:textSize="28sp"
+        android:textStyle="bold"
         android:textColor="@android:color/white"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginTop="60dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Toolbar igual que en activity_main.xml -->
+    <!-- Botón para añadir coche -->
+    <Button
+        android:id="@+id/botonAnadir"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Añadir coche"
+        android:layout_marginTop="20dp"
+        app:layout_constraintTop_toBottomOf="@id/textoMisCoches"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Contenedor donde aparecerán los coches -->
+    <ScrollView
+        android:id="@+id/scrollCoches"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_margin="16dp"
+        app:layout_constraintTop_toBottomOf="@id/botonAnadir"
+        app:layout_constraintBottom_toTopOf="@id/toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:id="@+id/contenedorCoches"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <!-- Toolbar inferior -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="350dp"
@@ -34,12 +64,10 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Contenedor para posicionar los botones -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <!-- Botón del logo (izquierda) -->
             <ImageButton
                 android:id="@+id/logoButton"
                 android:layout_width="40dp"
@@ -52,7 +80,6 @@
                 android:layout_marginStart="30dp"
                 android:contentDescription="@string/app_name" />
 
-            <!-- Botón Home (derecha) -->
             <ImageButton
                 android:id="@+id/homeButton"
                 android:layout_width="40dp"
@@ -68,3 +95,5 @@
     </androidx.appcompat.widget.Toolbar>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
+
+
