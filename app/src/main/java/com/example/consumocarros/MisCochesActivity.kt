@@ -4,6 +4,8 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.*
@@ -36,7 +38,7 @@ class MisCochesActivity : AppCompatActivity() {
         loadCars()
 
         // Toolbar
-        logoButton.setOnClickListener { /* no action */ }
+        logoButton.setOnClickListener { /* sin acción */ }
         homeButton.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
@@ -49,36 +51,78 @@ class MisCochesActivity : AppCompatActivity() {
         }
     }
 
-    // Mostrar diálogo para añadir coche
+    /**
+     * Diálogo inteligente para añadir coches
+     */
     private fun showAddCarDialog() {
         val inflater = LayoutInflater.from(this)
         val dialogView = inflater.inflate(R.layout.dialogo_anadir_coche, null)
-        val brandInput = dialogView.findViewById<EditText>(R.id.inputMarca)
-        val modelInput = dialogView.findViewById<EditText>(R.id.inputModelo)
-        val yearInput = dialogView.findViewById<EditText>(R.id.inputAño)
+        val inputBusqueda = dialogView.findViewById<EditText>(R.id.inputBusqueda)
+        val listaSugerencias = dialogView.findViewById<ListView>(R.id.listaSugerencias)
 
-        AlertDialog.Builder(this)
-            .setTitle("Añadir coche")
-            .setView(dialogView)
-            .setPositiveButton("Añadir") { _, _ ->
-                val brand = brandInput.text.toString()
-                val model = modelInput.text.toString()
-                val year = yearInput.text.toString()
+        val adapter = ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mutableListOf())
+        listaSugerencias.adapter = adapter
 
-                if (brand.isNotBlank() && model.isNotBlank() && year.isNotBlank()) {
-                    val newCar = Car(brand, model, year)
-                    carsList.add(newCar)
-                    addCarView(newCar)
-                    saveCars()
+        // Actualizar sugerencias mientras escribe
+        inputBusqueda.addTextChangedListener(object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) {}
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val query = s.toString().trim()
+                if (query.length >= 2) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val suggestions = ApiHelper.getSuggestions(query)
+                        withContext(Dispatchers.Main) {
+                            adapter.clear()
+                            adapter.addAll(suggestions.take(5))
+                        }
+                    }
                 } else {
-                    Toast.makeText(this, "Completa todos los campos", Toast.LENGTH_SHORT).show()
+                    adapter.clear()
                 }
             }
+        })
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Añadir coche")
+            .setView(dialogView)
+            .setPositiveButton("Añadir", null)
             .setNegativeButton("Cancelar", null)
-            .show()
+            .create()
+
+        dialog.show()
+
+        // Al pulsar sobre una sugerencia
+        listaSugerencias.setOnItemClickListener { _, _, position, _ ->
+            val seleccion = adapter.getItem(position)
+            inputBusqueda.setText(seleccion)
+        }
+
+        // Al pulsar "Añadir"
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val texto = inputBusqueda.text.toString().trim()
+            val partes = texto.split(" ")
+
+            if (partes.size >= 3) {
+                val year = partes.last()
+                val model = partes.drop(1).dropLast(1).joinToString(" ")
+                val brand = partes.first()
+
+                val newCar = Car(brand, model, year)
+                carsList.add(newCar)
+                addCarView(newCar)
+                saveCars()
+                dialog.dismiss()
+            } else {
+                Toast.makeText(this, "Introduce un coche válido (marca modelo año)", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
-    // Crear la vista visual del coche
+
+    /**
+     * Crear la vista visual de un coche
+     */
     private fun addCarView(car: Car) {
         val card = TextView(this)
         card.text = "${car.brand} ${car.model} ${car.year}"
@@ -87,7 +131,7 @@ class MisCochesActivity : AppCompatActivity() {
         card.setBackgroundResource(R.drawable.rounded_menu)
         card.setTextColor(resources.getColor(android.R.color.white))
 
-        // --- DOBLE CLIC → mostrar consumo ---
+        // Doble clic → mostrar consumo
         card.setOnClickListener(object : View.OnClickListener {
             private var lastClick = 0L
             override fun onClick(v: View?) {
@@ -104,7 +148,7 @@ class MisCochesActivity : AppCompatActivity() {
             }
         })
 
-        // --- MANTENER PULSADO → eliminar coche ---
+        // Mantener pulsado → eliminar coche
         card.setOnLongClickListener {
             AlertDialog.Builder(this)
                 .setTitle("Eliminar coche")
@@ -122,7 +166,9 @@ class MisCochesActivity : AppCompatActivity() {
         carsContainer.addView(card)
     }
 
-    // Mostrar resultado de consumo
+    /**
+     * Mostrar consumo del vehículo
+     */
     private fun showResult(text: String) {
         AlertDialog.Builder(this)
             .setTitle("Consumo del vehículo")
@@ -131,8 +177,9 @@ class MisCochesActivity : AppCompatActivity() {
             .show()
     }
 
-    // --- GUARDAR Y CARGAR COCHES ---
-
+    /**
+     * Guardar lista de coches
+     */
     private fun saveCars() {
         val sharedPrefs = getSharedPreferences("MyCarsPrefs", Context.MODE_PRIVATE)
         val jsonArray = JSONArray()
@@ -146,6 +193,9 @@ class MisCochesActivity : AppCompatActivity() {
         sharedPrefs.edit().putString("cars", jsonArray.toString()).apply()
     }
 
+    /**
+     * Cargar lista de coches guardados
+     */
     private fun loadCars() {
         val sharedPrefs = getSharedPreferences("MyCarsPrefs", Context.MODE_PRIVATE)
         val jsonString = sharedPrefs.getString("cars", null)
@@ -164,4 +214,3 @@ class MisCochesActivity : AppCompatActivity() {
         }
     }
 }
-

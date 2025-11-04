@@ -58,4 +58,37 @@ object ApiHelper {
     private fun mpgToKmpl(mpg: Double): Double {
         return mpg * 1.60934 / 3.78541
     }
+    fun getSuggestions(query: String): List<String> {
+        val suggestions = mutableListOf<String>()
+        try {
+            // Recorremos años recientes para buscar coincidencias
+            for (year in 2025 downTo 2010) {
+                val makesUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year=$year"
+                val makesDoc = getXmlDocument(makesUrl)
+                val makesNodes = makesDoc.getElementsByTagName("text")
+
+                for (i in 0 until makesNodes.length) {
+                    val make = makesNodes.item(i).textContent
+                    if (make.contains(query, ignoreCase = true)) {
+                        // Añadir todos los modelos de esa marca/año
+                        val modelsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=$year&make=$make"
+                        val modelsDoc = getXmlDocument(modelsUrl)
+                        val modelNodes = modelsDoc.getElementsByTagName("text")
+                        for (j in 0 until modelNodes.length) {
+                            val model = modelNodes.item(j).textContent
+                            val full = "$make $model $year"
+                            if (full.contains(query, ignoreCase = true))
+                                suggestions.add(full)
+                            if (suggestions.size >= 5) break
+                        }
+                    }
+                    if (suggestions.size >= 5) break
+                }
+                if (suggestions.size >= 5) break
+            }
+        } catch (_: Exception) {}
+        return suggestions
+    }
+
+
 }
