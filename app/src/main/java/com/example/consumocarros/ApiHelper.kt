@@ -60,35 +60,46 @@ object ApiHelper {
     }
     fun getSuggestions(query: String): List<String> {
         val suggestions = mutableListOf<String>()
+        val q = query.trim()
+        if (q.isEmpty()) return suggestions
+
         try {
-            // Recorremos años recientes para buscar coincidencias
-            for (year in 2025 downTo 2010) {
+            // Buscamos en años recientes hacia atrás (ajusta rango si quieres)
+            for (year in 2025 downTo 2005) {
+                // Obtener marcas disponibles (por año)
                 val makesUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year=$year"
                 val makesDoc = getXmlDocument(makesUrl)
-                val makesNodes = makesDoc.getElementsByTagName("text")
+                val makesNodes = makesDoc.getElementsByTagName("value")
 
                 for (i in 0 until makesNodes.length) {
-                    val make = makesNodes.item(i).textContent
-                    if (make.contains(query, ignoreCase = true)) {
-                        // Añadir todos los modelos de esa marca/año
-                        val modelsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=$year&make=$make"
-                        val modelsDoc = getXmlDocument(modelsUrl)
-                        val modelNodes = modelsDoc.getElementsByTagName("text")
-                        for (j in 0 until modelNodes.length) {
-                            val model = modelNodes.item(j).textContent
-                            val full = "$make $model $year"
-                            if (full.contains(query, ignoreCase = true))
-                                suggestions.add(full)
-                            if (suggestions.size >= 5) break
+                    val make = makesNodes.item(i).textContent ?: continue
+
+                    // Obtener modelos para esa marca y año
+                    val modelsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=$year&make=$make"
+                    val modelsDoc = try {
+                        getXmlDocument(modelsUrl)
+                    } catch (e: Exception) {
+                        continue
+                    }
+                    val modelNodes = modelsDoc.getElementsByTagName("value")
+
+                    for (j in 0 until modelNodes.length) {
+                        val model = modelNodes.item(j).textContent ?: continue
+
+                        val full = "$make $model $year"
+                        if (full.contains(q, ignoreCase = true)) {
+                            suggestions.add(full)
+                            if (suggestions.size >= 5) return suggestions
                         }
                     }
-                    if (suggestions.size >= 5) break
                 }
-                if (suggestions.size >= 5) break
             }
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            // Ignorar errores de red aquí; devolvemos lo que tengamos
+        }
         return suggestions
     }
+
 
 
 }
