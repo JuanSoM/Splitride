@@ -1,11 +1,11 @@
 package com.example.consumocarros;
 
 import androidx.appcompat.app.AppCompatActivity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toolbar;
 
 public class MainActivity extends AppCompatActivity {
     public int capacidadcombustible;
@@ -18,21 +18,21 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
         usuarioconectado = (Usuario) getIntent().getSerializableExtra("usuario");
+
         TextView textoincio = findViewById(R.id.textViewNombre);
-        Button botoncuenta = findViewById(R.id.botoncuenta);
+        textoincio.setText("Hola " + usuarioconectado.nombre);
+
         Button botonride = findViewById(R.id.botonRide);
         Button botoncombustible = findViewById(R.id.botoncombustible);
+        Button botoncuenta = findViewById(R.id.botoncuenta);
+
         //Toolbar toolbar = findViewById(R.id.toolbar);
         capacidadcombustible = 50;
 
-        textoincio.setText("Hola " + usuarioconectado.nombre);
-        botonride.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                //pasar a la selección de coche
-            }
+        botonride.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, MapActivity.class);
+            startActivity(intent);
         });
     }
 }

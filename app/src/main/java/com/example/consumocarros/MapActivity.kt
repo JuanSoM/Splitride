@@ -1,8 +1,10 @@
 package com.example.consumocarros
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -11,11 +13,13 @@ import android.os.Bundle
 import android.os.Looper
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import com.google.gson.Gson
 import okhttp3.*
 import org.json.JSONArray
 import org.json.JSONObject
@@ -32,15 +36,20 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
+data class RouteInfo(val title: String, val details: String, val color: Int)
+
 class MapActivity : AppCompatActivity() {
 
     private lateinit var map: MapView
     private lateinit var btnLocate: Button
     private lateinit var btnClear: Button
+    private lateinit var originInput: EditText
     private lateinit var destInput: EditText
     private lateinit var suggestions: ListView
     private lateinit var hint: TextView
     private lateinit var routesList: ListView
+    private lateinit var clearOrigin: ImageButton
+    private lateinit var clearDest: ImageButton
 
     private var origin: GeoPoint? = null
     private var originMarker: Marker? = null
@@ -54,86 +63,157 @@ class MapActivity : AppCompatActivity() {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private val gson = Gson()
+    private var blockTextWatcher = false
 
     companion object {
         const val REQ_LOCATION = 100
+        const val CONSUMO_PROMEDIO_L_100KM = 7.0
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // importante: userAgent para osmdroid
-        Configuration.getInstance().userAgentValue = packageName
-
+        Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
         setContentView(R.layout.activity_map)
 
         map = findViewById(R.id.map)
+        btnLocate = findViewById(R.id.btn_locate)
+        btnClear = findViewById(R.id.btn_clear)
+        originInput = findViewById(R.id.origin_input)
+        destInput = findViewById(R.id.dest_input)
+        clearOrigin = findViewById(R.id.clear_origin)
+        clearDest = findViewById(R.id.clear_dest)
+        suggestions = findViewById(R.id.suggestions)
+        hint = findViewById(R.id.hint)
+        routesList = findViewById(R.id.routes_list)
+
         map.setTileSource(TileSourceFactory.DEFAULT_TILE_SOURCE)
         map.setMultiTouchControls(true)
         map.controller.setZoom(13.0)
         map.controller.setCenter(GeoPoint(40.4168, -3.7038))
 
-        btnLocate = findViewById(R.id.btn_locate)
-        btnClear = findViewById(R.id.btn_clear)
-        destInput = findViewById(R.id.dest_input)
-        suggestions = findViewById(R.id.suggestions)
-        hint = findViewById(R.id.hint)
-        routesList = findViewById(R.id.routes_list)
-
         btnLocate.setOnClickListener { locateAndSetOrigin() }
         btnClear.setOnClickListener { clearAll() }
 
-        // Map tap: usamos MapEventsOverlay + MapEventsReceiver
-        val mapEventsReceiver = object : MapEventsReceiver {
-            override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
-                if (p == null) return false
-                if (origin == null) {
-                    setOrigin(p)
-                    hint.text = "Origen establecido. Pulsa para seleccionar destino."
-                } else {
-                    setDest(p)
-                    hint.text = "Destino establecido. Calculando rutas..."
-                    requestRoutes()
-                }
-                return true
-            }
-            override fun longPressHelper(p: GeoPoint?): Boolean {
-                // no-op
-                return false
-            }
-        }
-        val overlay = MapEventsOverlay(mapEventsReceiver)
-        map.overlays.add(overlay)
-
-        // suggestions click
-        suggestions.setOnItemClickListener { _, _, position, _ ->
-            val item = suggestions.adapter.getItem(position) as JSONObject
-            val lat = item.optDouble("lat")
-            val lon = item.optDouble("lon")
-            setDest(GeoPoint(lat, lon))
-            suggestions.visibility = View.GONE
-            destInput.setText(item.optString("display_name"))
-            hint.text = "Destino establecido. Calculando rutas..."
-            requestRoutes()
-        }
-
-        // dest input debounce simple
-        destInput.addTextChangedListener(object : TextWatcher {
-            private val runnable = Runnable {
-                val q = destInput.text.toString().trim()
-                if (q.length >= 3) searchNominatim(q)
-            }
+        // Mostrar / ocultar botones ❌ según el texto
+        originInput.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
-                destInput.removeCallbacks(runnable)
-                destInput.postDelayed(runnable, 300)
+                clearOrigin.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
             }
+
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        // iniciar geolocalización automática
-        //locateAndSetOrigin()
+        destInput.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                clearDest.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
+            }
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        // Botón ❌ borrar origen
+        clearOrigin.setOnClickListener {
+            originInput.setText("")
+            origin = null
+            originMarker?.let { map.overlays.remove(it) }
+            originMarker = null
+            clearRoutes()
+            map.invalidate()
+            hint.text = "Selecciona un nuevo origen en el mapa."
+        }
+
+
+
+        // Botón ❌ borrar destino
+        clearDest.setOnClickListener {
+            destInput.setText("")
+            dest = null
+            destMarker?.let { map.overlays.remove(it) }
+            destMarker = null
+            suggestions.visibility = View.GONE
+            map.invalidate()
+        }
+
+        // Control de clics en el mapa
+        val mapEventsReceiver = object : MapEventsReceiver {
+            override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
+                if (p == null) return false
+                suggestions.visibility = View.GONE // oculta sugerencias si se toca el mapa
+
+                when {
+                    origin == null -> {
+                        setOrigin(p)
+                        hint.text = "Origen establecido. Pulsa para seleccionar destino."
+                    }
+                    dest == null -> {
+                        setDest(p)
+                        hint.text = "Destino establecido. Calculando rutas..."
+                        requestRoutes()
+                    }
+                    else -> { // si ya hay ambos → reemplazar destino
+                        setDest(p)
+                        hint.text = "Destino cambiado. Calculando nuevas rutas..."
+                        requestRoutes()
+                    }
+                }
+                return true
+            }
+
+            override fun longPressHelper(p: GeoPoint?): Boolean = false
+        }
+        map.overlays.add(MapEventsOverlay(mapEventsReceiver))
+
+        suggestions.setOnItemClickListener { _, _, position, _ ->
+            val item = suggestions.adapter.getItem(position) as JSONObject
+            setDestFromSuggestion(item)
+        }
+
+        destInput.addTextChangedListener(object : TextWatcher {
+            private val runnable = Runnable {
+                if (!blockTextWatcher) {
+                    val q = destInput.text.toString().trim()
+                    if (q.length >= 3) searchNominatim(q)
+                    else suggestions.visibility = View.GONE
+                }
+            }
+
+            override fun afterTextChanged(s: Editable?) {
+                destInput.removeCallbacks(runnable)
+                destInput.postDelayed(runnable, 400)
+            }
+
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        destInput.setOnEditorActionListener { _, _, _ ->
+            suggestions.visibility = View.GONE
+            hideKeyboard(destInput)
+            destInput.clearFocus()
+            true
+        }
+    }
+
+    private fun hideKeyboard(view: View) {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(view.windowToken, 0)
+    }
+
+    private fun setDestFromSuggestion(item: JSONObject) {
+        val lat = item.optDouble("lat")
+        val lon = item.optDouble("lon")
+        setDest(GeoPoint(lat, lon))
+        suggestions.visibility = View.GONE
+        blockTextWatcher = true
+        destInput.setText(item.optString("display_name"))
+        destInput.clearFocus()
+        hideKeyboard(destInput)
+        blockTextWatcher = false
+        hint.text = "Destino establecido. Calculando rutas..."
+        requestRoutes()
     }
 
     override fun onResume() {
@@ -146,108 +226,109 @@ class MapActivity : AppCompatActivity() {
         map.onPause()
     }
 
-    // ---------- LOCATION ----------
     private fun locateAndSetOrigin() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQ_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                REQ_LOCATION
+            )
             return
         }
-
         val lm = getSystemService(LOCATION_SERVICE) as LocationManager
-        val provider = LocationManager.GPS_PROVIDER
         try {
-            val last = lm.getLastKnownLocation(provider) ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            val last = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             if (last != null) {
                 val gp = GeoPoint(last.latitude, last.longitude)
                 setOrigin(gp)
-                map.controller.animateTo(gp)
-                map.controller.setZoom(14.0)
-                hint.text = "Origen establecido desde tu ubicación. Pulsa en el mapa para marcar destino."
+                map.controller.animateTo(gp, 14.0, 500)
             } else {
-                // solicitar single update
-                lm.requestSingleUpdate(provider, object : LocationListener {
+                lm.requestSingleUpdate(LocationManager.GPS_PROVIDER, object : LocationListener {
                     override fun onLocationChanged(location: Location) {
                         val gp = GeoPoint(location.latitude, location.longitude)
                         setOrigin(gp)
-                        map.controller.animateTo(gp)
-                        map.controller.setZoom(14.0)
-                        hint.text = "Origen establecido desde tu ubicación. Pulsa en el mapa para marcar destino."
+                        map.controller.animateTo(gp, 14.0, 500)
                     }
-                    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
-                    override fun onProviderEnabled(provider: String) {}
-                    override fun onProviderDisabled(provider: String) {}
                 }, Looper.getMainLooper())
             }
         } catch (ex: SecurityException) {
-            ex.printStackTrace()
             Toast.makeText(this, "Permiso de ubicación no concedido", Toast.LENGTH_SHORT).show()
         }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQ_LOCATION) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                locateAndSetOrigin()
-            } else {
-                Toast.makeText(this, "Permiso de ubicación rechazado", Toast.LENGTH_SHORT).show()
-            }
+        if (requestCode == REQ_LOCATION && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            locateAndSetOrigin()
+        } else {
+            Toast.makeText(this, "Permiso de ubicación rechazado", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun setOrigin(gp: GeoPoint) {
         origin = gp
         if (originMarker == null) {
-            originMarker = Marker(map)
-            originMarker!!.title = "Origen"
-            originMarker!!.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            originMarker = Marker(map).apply {
+                title = "Origen"
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            }
             map.overlays.add(originMarker)
         }
         originMarker!!.position = gp
+        reverseSearchNominatim(gp, isOrigin = true)
         map.invalidate()
+
+        // ✅ Si ya existe destino cuando establecemos origen, recalcular rutas
+        if (dest != null) {
+            clearRoutes()
+            requestRoutes()
+        }
     }
+
+
 
     private fun setDest(gp: GeoPoint) {
         dest = gp
         if (destMarker == null) {
-            destMarker = Marker(map)
-            destMarker!!.title = "Destino"
-            destMarker!!.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            destMarker = Marker(map).apply {
+                title = "Destino"
+                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            }
             map.overlays.add(destMarker)
         }
         destMarker!!.position = gp
+        suggestions.visibility = View.GONE
+        destInput.clearFocus()
+        destInput.isCursorVisible = false
+        hideKeyboard(destInput)
+        reverseSearchNominatim(gp, isOrigin = false)
         map.invalidate()
     }
 
-    // ---------- Nominatim search ----------
-    private fun searchNominatim(q: String) {
+
+
+
+
+private fun searchNominatim(q: String) {
         val url = "https://nominatim.openstreetmap.org/search?format=jsonv2&q=${Uri.encode(q)}&addressdetails=1&limit=6"
-        val req = Request.Builder()
-            .url(url)
-            .header("Accept-Language", "es")
-            .header("User-Agent", packageName)
-            .build()
-        client.newCall(req).enqueue(object: Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread { /* ignore */ }
-            }
+        val req = Request.Builder().url(url).header("Accept-Language", "es").header("User-Agent", packageName).build()
+        client.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     if (!it.isSuccessful) return
-                    val body = it.body?.string() ?: return
-                    val arr = JSONArray(body)
-                    val items = mutableListOf<JSONObject>()
-                    for (i in 0 until arr.length()) {
-                        items.add(arr.getJSONObject(i))
+                    val items = (JSONArray(it.body?.string() ?: "[]")).let {
+                        0.until(it.length()).map { i -> it.getJSONObject(i) }
                     }
                     runOnUiThread {
                         val adapter = object : ArrayAdapter<JSONObject>(this@MapActivity, android.R.layout.simple_list_item_1, items) {
-                            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
-                                val v = super.getView(position, convertView, parent) as TextView
-                                v.text = getItem(position)?.optString("display_name") ?: ""
-                                return v
-                            }
+                            override fun getView(pos: Int, view: View?, parent: ViewGroup) =
+                                (super.getView(pos, view, parent) as TextView).apply {
+                                    text = getItem(pos)?.optString("display_name") ?: ""
+                                }
                         }
                         suggestions.adapter = adapter
                         suggestions.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
@@ -257,38 +338,42 @@ class MapActivity : AppCompatActivity() {
         })
     }
 
-    // ---------- OSRM routing ----------
+    private fun reverseSearchNominatim(gp: GeoPoint, isOrigin: Boolean) {
+        val url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${gp.latitude}&lon=${gp.longitude}"
+        val req = Request.Builder().url(url).header("Accept-Language", "es").header("User-Agent", packageName).build()
+        client.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!it.isSuccessful) return
+                    val displayName = JSONObject(it.body?.string() ?: "{}").optString("display_name", "Ubicación desconocida")
+                    runOnUiThread {
+                        blockTextWatcher = true
+                        if (isOrigin) originInput.setText(displayName) else destInput.setText(displayName)
+                        blockTextWatcher = false
+                    }
+                }
+            }
+        })
+    }
+
     private fun requestRoutes() {
         val o = origin ?: return
         val d = dest ?: return
-
         clearRoutes()
-
         val coords = "${o.longitude},${o.latitude};${d.longitude},${d.latitude}"
         val url = "https://router.project-osrm.org/route/v1/driving/$coords?alternatives=true&overview=full&geometries=geojson"
         val req = Request.Builder().url(url).header("User-Agent", packageName).build()
-
-        client.newCall(req).enqueue(object: Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                runOnUiThread { hint.text = "Error calculando rutas: ${e.message}" }
-            }
+        client.newCall(req).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) { runOnUiThread { hint.text = "Error calculando rutas: ${e.message}" } }
             override fun onResponse(call: Call, response: Response) {
                 response.use {
-                    if (!it.isSuccessful) {
-                        runOnUiThread { hint.text = "Error en OSRM: ${it.code}" }
-                        return
-                    }
-                    val body = it.body?.string() ?: ""
-                    val json = JSONObject(body)
-                    val arr = json.optJSONArray("routes") ?: JSONArray()
+                    if (!it.isSuccessful) { runOnUiThread { hint.text = "Error en OSRM: ${it.code}" }; return }
                     routesData.clear()
-                    for (i in 0 until arr.length()) {
-                        routesData.add(arr.getJSONObject(i))
-                    }
+                    val routes = JSONObject(it.body?.string() ?: "{}").optJSONArray("routes") ?: JSONArray()
+                    (0 until routes.length()).forEach { i -> routesData.add(routes.getJSONObject(i)) }
                     runOnUiThread {
-                        if (routesData.isEmpty()) {
-                            hint.text = "No se encontraron rutas."
-                        } else {
+                        if (routesData.isEmpty()) hint.text = "No se encontraron rutas." else {
                             drawRoutes()
                             hint.text = "Selecciona una ruta para abrirla en Google Maps."
                         }
@@ -299,32 +384,24 @@ class MapActivity : AppCompatActivity() {
     }
 
     private fun drawRoutes() {
-        // limpiar
         routePolylines.forEach { map.overlays.remove(it) }
         routePolylines.clear()
 
-        val listItems = mutableListOf<String>()
         val colors = arrayOf("#0078d4", "#ff8c00", "#2b8f7e", "#d9534f")
+        val routeInfoList = mutableListOf<RouteInfo>()
 
         for (i in routesData.indices) {
             val r = routesData[i]
             val geom = r.getJSONObject("geometry")
             val coords = geom.getJSONArray("coordinates")
-
-            val pts = mutableListOf<GeoPoint>()
-            for (j in 0 until coords.length()) {
-                val pair = coords.getJSONArray(j)
-                val lng = pair.getDouble(0)
-                val lat = pair.getDouble(1)
-                pts.add(GeoPoint(lat, lng))
+            val pts = (0 until coords.length()).map { j ->
+                coords.getJSONArray(j).let { GeoPoint(it.getDouble(1), it.getDouble(0)) }
             }
 
-            val poly = Polyline()
+            val poly = Polyline(map)
             poly.setPoints(pts)
-            poly.width = if (i == 0) 12f else 6f
-            try {
-                poly.color = android.graphics.Color.parseColor(colors[i % colors.size])
-            } catch (ex: Exception) { /* ignore color parse error */ }
+            poly.color = Color.parseColor(colors[i % colors.size])
+            poly.width = if (i == 0) 10f else 6f
 
             poly.setOnClickListener { _, _, _ ->
                 highlightRoute(i)
@@ -332,112 +409,67 @@ class MapActivity : AppCompatActivity() {
                 true
             }
 
-            routePolylines.add(poly)
             map.overlays.add(poly)
+            routePolylines.add(poly)
 
             val dist = r.optDouble("distance", 0.0)
             val dur = r.optDouble("duration", 0.0)
-            listItems.add("Ruta ${i+1}\n${formatDistance(dist)} · ${formatDuration(dur)}")
+            val consumoLitros = (dist / 1000.0 / 100.0) * CONSUMO_PROMEDIO_L_100KM
+            routeInfoList.add(RouteInfo("Ruta ${i + 1}", "${formatDistance(dist)} · ${formatDuration(dur)} · %.2f L".format(consumoLitros), poly.color))
         }
 
-        // ajustar vista a bound de todas las rutas
-        if (routePolylines.isNotEmpty()) {
-            val allPoints = routePolylines.flatMap { it.points }
-            if (allPoints.isNotEmpty()) {
-                val bb = BoundingBox.fromGeoPoints(allPoints)
-                map.zoomToBoundingBox(bb, true, 50)
-            }
-        }
+        val allPoints = routePolylines.flatMap { it.points }
+        if (allPoints.isNotEmpty()) map.zoomToBoundingBox(BoundingBox.fromGeoPoints(allPoints), true, 100)
 
-        val adapter = ArrayAdapter(this, android.R.layout.simple_list_item_activated_1, listItems)
-        routesList.adapter = adapter
-        routesList.setOnItemClickListener { _, _, position, _ ->
-            highlightRoute(position)
-            openRouteInGoogleMaps(position)
+        routesList.adapter = RouteAdapter(this, routeInfoList)
+        routesList.visibility = View.VISIBLE
+        routesList.setOnItemClickListener { _, _, pos, _ ->
+            highlightRoute(pos)
+            openRouteInGoogleMaps(pos)
         }
+        map.invalidate()
     }
 
     private fun highlightRoute(index: Int) {
-        for (i in routePolylines.indices) {
-            val poly = routePolylines[i]
-            poly.width = if (i == index) 12f else 6f
-        }
-        routesList.setItemChecked(index, true)
+        routePolylines.forEachIndexed { i, poly -> poly.width = if (i == index) 12f else 6f }
         map.invalidate()
     }
 
     private fun openRouteInGoogleMaps(index: Int) {
-        val r = routesData.getOrNull(index) ?: return
         val o = origin ?: return
         val d = dest ?: return
-
-        val geom = r.getJSONObject("geometry")
-        val coords = geom.getJSONArray("coordinates")
-        val waypoints = mutableListOf<String>()
-        var lastLng = coords.getJSONArray(0).getDouble(0)
-        var lastLat = coords.getJSONArray(0).getDouble(1)
-        var accDist = 0.0
-        for (i in 1 until coords.length()) {
-            val lng = coords.getJSONArray(i).getDouble(0)
-            val lat = coords.getJSONArray(i).getDouble(1)
-            val dx = (lng - lastLng)
-            val dy = (lat - lastLat)
-            val approxKm = Math.sqrt(dx*dx + dy*dy) * 111.0
-            accDist += approxKm
-            if (accDist > 5.0) {
-                waypoints.add("via:${lat},${lng}")
-                accDist = 0.0
-            }
-            lastLng = lng
-            lastLat = lat
-            if (waypoints.size >= 10) break
-        }
-
-        val originStr = "${o.latitude},${o.longitude}"
-        val destStr = "${d.latitude},${d.longitude}"
-        val wayParam = if (waypoints.isNotEmpty()) "&waypoints=${Uri.encode(waypoints.joinToString("|"))}" else ""
-        val url = "https://www.google.com/maps/dir/?api=1&origin=${Uri.encode(originStr)}&destination=${Uri.encode(destStr)}$wayParam&travelmode=driving"
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-        startActivity(intent)
+        val url = "https://www.google.com/maps/dir/?api=1&origin=${o.latitude},${o.longitude}&destination=${d.latitude},${d.longitude}&travelmode=driving"
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
 
     private fun clearRoutes() {
         routePolylines.forEach { map.overlays.remove(it) }
         routePolylines.clear()
-        routesData.clear()
         routesList.adapter = null
+        routesList.visibility = View.GONE
+        map.invalidate()
     }
 
     private fun clearAll() {
         clearRoutes()
-        if (destMarker != null) {
-            map.overlays.remove(destMarker)
-            destMarker = null
-            dest = null
-        }
-        if (originMarker != null) {
-            map.overlays.remove(originMarker)
-            originMarker = null
-            origin = null
-        }
+        destMarker?.let { map.overlays.remove(it) }; destMarker = null; dest = null
+        originMarker?.let { map.overlays.remove(it) }; originMarker = null; origin = null
+        originInput.setText("")
+        destInput.setText("")
         map.invalidate()
     }
 
-    // ---------- Helpers ----------
-    private fun formatDistance(meters: Double): String {
-        return if (meters >= 1000) {
-            String.format("%.1f km", meters / 1000.0)
-        } else {
-            "${meters.roundToInt()} m"
-        }
-    }
+    private fun formatDistance(m: Double) = if (m >= 1000) "%.1f km".format(m / 1000.0) else "${m.roundToInt()} m"
+    private fun formatDuration(s: Double) = (s / 60.0).roundToInt().let { if (it >= 60) "${it / 60} h ${it % 60} min" else "$it min" }
 
-    private fun formatDuration(seconds: Double): String {
-        val mins = (seconds / 60.0).roundToInt()
-        return if (mins >= 60) {
-            "${mins / 60} h ${mins % 60} min"
-        } else {
-            "$mins min"
+    private class RouteAdapter(ctx: Context, routes: List<RouteInfo>) : ArrayAdapter<RouteInfo>(ctx, 0, routes) {
+        override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
+            val v = convertView ?: LayoutInflater.from(context).inflate(R.layout.list_item_route, parent, false)
+            getItem(pos)?.let {
+                v.findViewById<TextView>(R.id.route_title).apply { text = it.title; setTextColor(it.color) }
+                v.findViewById<TextView>(R.id.route_details).text = it.details
+            }
+            return v
         }
     }
 }
