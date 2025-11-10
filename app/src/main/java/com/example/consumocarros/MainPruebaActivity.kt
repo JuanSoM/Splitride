@@ -4,9 +4,10 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
+import androidx.activity.ComponentActivity
 
 
-class MainActivity : ComponentActivity() {
+class MainPruebaActivity : ComponentActivity() {
 
     private lateinit var editTextMake: EditText
     private lateinit var editTextModel: EditText
@@ -17,7 +18,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_main) //HAY QUE PONER AQUI EL LAYOUT DE JUAN
 
         editTextMake = findViewById(R.id.editTextMake)
         editTextModel = findViewById(R.id.editTextModel)
