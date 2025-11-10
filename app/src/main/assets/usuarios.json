@@ -1,0 +1,23 @@
+[
+  {
+    "usuario": "juan123",
+    "contrasena": "12345",
+    "nombre": "Juan",
+    "apellidos": "Soriano",
+    "coches": ["Ford Mustang", "Tesla Model 3"]
+  },
+  {
+    "usuario": "marta123",
+    "contrasena": "12345",
+    "nombre": "Marta",
+    "apellidos": "Cuevas",
+    "coches": []
+  },
+  {
+    "usuario": "daniel123",
+    "contrasena": "12345",
+    "nombre": "Daniel",
+    "apellidos": "Gómez",
+    "coches": []
+  }
+]
