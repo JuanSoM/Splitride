@@ -72,22 +72,52 @@
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent">
+                    android:layout_height="wrap_content"> <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/botonRide"
+                    android:layout_width="375dp"
+                    android:layout_height="140dp"
+                    android:layout_marginStart="17dp"
+                    android:layout_marginEnd="16dp"
+                    android:background="@drawable/rounded_button"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="16dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:ignore="MissingConstraints">
 
-                    <Button
-                        android:id="@+id/botonRide"
-                        android:layout_width="375dp"
-                        android:layout_height="140dp"
-                        android:layout_marginStart="17dp"
+                    <TextView
+                        android:id="@+id/textViewNuevoViaje"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/lexend_giga_medium"
+                        android:text="Nuevo\nViaje"
+                        android:textColor="#333333"
+                        android:textSize="28sp"
+                        android:textStyle="bold"
+                        app:layout_constraintBottom_toBottomOf="parent"
+                        app:layout_constraintEnd_toStartOf="@+id/imageViewMaps"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="16dp" />
+
+                    <ImageView
+                        android:id="@+id/imageViewMaps"
+                        android:layout_width="100dp"
+                        android:layout_height="100dp"
                         android:layout_marginEnd="16dp"
-                        android:background="@drawable/rounded_button"
-                        android:text="Button"
+                        android:src="@drawable/maps"
+                        android:scaleType="fitCenter"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toStartOf="parent"
-                        tools:ignore="MissingConstraints" />
+                        app:layout_constraintTop_toTopOf="parent" />
+
                 </androidx.constraintlayout.widget.ConstraintLayout>
 
+                </androidx.constraintlayout.widget.ConstraintLayout>
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -177,12 +207,10 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <!-- Contenedor para posicionar los botones -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <!-- Botón del logo (izquierda) -->
             <ImageButton
                 android:id="@+id/logoButton"
                 android:layout_width="40dp"
@@ -195,7 +223,6 @@
                 android:layout_marginStart="30dp"
                 android:contentDescription="@string/app_name" />
 
-            <!-- Botón Home (derecha) -->
             <ImageButton
                 android:id="@+id/homeButton"
                 android:layout_width="40dp"

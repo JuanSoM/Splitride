@@ -24,10 +24,14 @@ public class MainActivity extends AppCompatActivity {
         // Referencias a los elementos del layout
         TextView textoincio = findViewById(R.id.textViewNombre);
         Button botoncuenta = findViewById(R.id.botoncuenta);
-        Button botonride = findViewById(R.id.botonRide);
+
+        // --- INICIO MODIFICACIÓN 1: Cambiado de 'Button' a 'View' ---
+        View botonride = findViewById(R.id.botonRide);
+        // --- FIN MODIFICACIÓN 1 ---
+
         Button botoncombustible = findViewById(R.id.botoncombustible);
         ImageButton logoButton = findViewById(R.id.logoButton);
-        ImageButton homeButton = findViewById(R.id.homeButton);  // 👈 nuevo botón
+        ImageButton homeButton = findViewById(R.id.homeButton);
 
         capacidadcombustible = 50;
 
@@ -36,15 +40,20 @@ public class MainActivity extends AppCompatActivity {
             textoincio.setText("Hola " + usuarioconectado.nombre);
         }
 
-        // Acción del botón Ride
+        // --- INICIO MODIFICACIÓN 2: Lógica del botón Ride actualizada ---
+        // Acción del botón Ride (Ahora es el layout "Nuevo Viaje")
         botonride.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // Aquí podrías pasar a la selección de coche
+                // Misma función que el logo: ir a Mis Coches
+                Intent intent = new Intent(MainActivity.this, MisCochesActivity.class);
+                intent.putExtra("usuario", usuarioconectado);
+                startActivity(intent);
             }
         });
+        // --- FIN MODIFICACIÓN 2 ---
 
-        // 👇 Acción del botón del logo → abre la pantalla MisCoches
+        // Acción del botón del logo → abre la pantalla MisCoches
         logoButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -54,13 +63,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // 👇 Acción del botón Home → ya estamos en MainActivity, así que no hace falta cambiar de pantalla
+        // Acción del botón Home
         homeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                // Si quisieras refrescar la pantalla, podrías hacer algo como:
-                // recreate();
-                // Pero normalmente aquí no se hace nada
+                // No hace nada, ya estamos en Home
             }
         });
     }
