@@ -66,99 +66,177 @@ object ApiHelper {
      *  "Volkswagen G" -> modelos que empiezan por "G" dentro de Volkswagen
      *  "Volkswagen Golf 2019" -> filtra también por año que empiece por "2019"
      */
+    // Cache: año -> lista de marcas
+    private val makeCache = mutableMapOf<Int, List<String>>()
+    private val lock = Any()
+
     fun getSuggestions(query: String): List<String> {
-        val suggestions = mutableListOf<String>()
         val q = query.trim()
-        if (q.isEmpty()) return suggestions
+        if (q.isEmpty()) return emptyList()
 
-        val tokens = q.split("\\s+".toRegex()).map { it.trim() }.filter { it.isNotEmpty() }
-        if (tokens.isEmpty()) return suggestions
+        val tokens = q.split("\\s+".toRegex())
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .map { it.lowercase() }
 
-        try {
-            // Rango de años razonable (ajustable)
-            for (year in 2025 downTo 2000) {
-                val makesUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year=$year"
-                val makesDoc = try { getXmlDocument(makesUrl) } catch (e: Exception) { continue }
-                val makesNodes = makesDoc.getElementsByTagName("value")
+        if (tokens.isEmpty()) return emptyList()
 
-                for (i in 0 until makesNodes.length) {
-                    val make = makesNodes.item(i)?.textContent ?: continue
-                    val brandToken = tokens[0]
+        val suggestions = mutableListOf<String>()
+        val seen = mutableSetOf<String>() // evitar duplicados
 
-                    // 🔹 Solo aceptar marcas que empiecen por el texto escrito
-                    if (!make.startsWith(brandToken, ignoreCase = true)) continue
+        // Rango razonable: últimos 11 años
+        for (year in 2025 downTo 2015) {
+            if (suggestions.size >= 10) break
 
-                    // Si solo se escribió la marca, mostramos algunos modelos populares
-                    if (tokens.size == 1) {
-                        val modelsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=$year&make=$make"
-                        val modelsDoc = try { getXmlDocument(modelsUrl) } catch (e: Exception) { continue }
-                        val modelNodes = modelsDoc.getElementsByTagName("value")
+            val makes = getMakesForYear(year) ?: continue
 
-                        for (j in 0 until modelNodes.length) {
-                            val model = modelNodes.item(j)?.textContent ?: continue
-                            suggestions.add("$make $model $year")
-                            if (suggestions.size >= 10) return suggestions
-                        }
+            for (make in makes) {
+                val makeLower = make.lowercase()
+
+                // 1. La marca debe contener el primer token
+                if (!containsToken(makeLower, tokens[0])) continue
+
+                // Si solo hay marca → sugerir modelos populares
+                if (tokens.size == 1) {
+                    addPopularModels(make, year, suggestions, seen)
+                    continue
+                }
+
+                // 2. Buscar modelos que contengan el segundo token
+                val models = getModelsForMakeYear(make, year) ?: continue
+                for (model in models) {
+                    val modelLower = model.lowercase()
+                    if (!containsToken(modelLower, tokens[1])) continue
+
+                    // Caso: marca + modelo → sugerir años
+                    if (tokens.size == 2) {
+                        addYearsForModel(make, model, year, tokens, suggestions, seen)
                         continue
                     }
 
-                    // 🔹 Obtener modelos de la marca coincidente
-                    val modelsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=$year&make=$make"
-                    val modelsDoc = try { getXmlDocument(modelsUrl) } catch (e: Exception) { continue }
-                    val modelNodes = modelsDoc.getElementsByTagName("value")
-
-                    for (j in 0 until modelNodes.length) {
-                        val model = modelNodes.item(j)?.textContent ?: continue
-                        val modelToken = if (tokens.size >= 2) tokens[1] else ""
-
-                        // Solo aceptar modelos que empiecen con el texto exacto del modelo escrito
-                        if (modelToken.isNotEmpty() && !model.startsWith(modelToken, ignoreCase = true)) continue
-
-                        // Si solo hay marca + modelo, añadir todas las combinaciones válidas de año
-                        if (tokens.size == 2) {
-                            val yearsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/year?make=$make&model=$model"
-                            val yearsDoc = try { getXmlDocument(yearsUrl) } catch (e: Exception) { continue }
-                            val yearNodes = yearsDoc.getElementsByTagName("value")
-
-                            for (k in 0 until yearNodes.length) {
-                                val y = yearNodes.item(k)?.textContent ?: continue
-                                suggestions.add("$make $model $y")
-                                if (suggestions.size >= 10) return suggestions
-                            }
-                            continue
-                        }
-
-                        // 🔹 Si se incluye el año (o parte del año)
-                        if (tokens.size >= 3) {
-                            val yearToken = tokens[2]
-                            val yearsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/year?make=$make&model=$model"
-                            val yearsDoc = try { getXmlDocument(yearsUrl) } catch (e: Exception) { continue }
-                            val yearNodes = yearsDoc.getElementsByTagName("value")
-
-                            for (k in 0 until yearNodes.length) {
-                                val y = yearNodes.item(k)?.textContent ?: continue
-                                // 🔹 Coincidencia estricta: el año debe empezar igual
-                                if (y.startsWith(yearToken, ignoreCase = true)) {
-                                    suggestions.add("$make $model $y")
-                                    if (suggestions.size >= 10) return suggestions
-                                }
+                    // Caso: marca + modelo + año → filtrar años
+                    if (tokens.size >= 3) {
+                        val yearToken = tokens[2]
+                        val years = getYearsForMakeModel(make, model) ?: continue
+                        for (y in years) {
+                            if (y.startsWith(yearToken, ignoreCase = true)) {
+                                addSuggestion("$make $model $y", suggestions, seen)
                             }
                         }
                     }
                 }
             }
-        } catch (_: Exception) {
-            // Devolver lo que se haya podido obtener
         }
 
-        // 🔹 Filtro final: devolver solo sugerencias que comiencen realmente con el texto escrito
-        // Esto elimina falsos positivos (como Golf R 2025 cuando escribes Golf 2)
-        return suggestions.filter {
-            it.lowercase().startsWith(q.lowercase())
-        }.take(10)
+        // Filtro final: debe contener TODOS los tokens
+        return suggestions
+            .filter { sug ->
+                val lower = sug.lowercase()
+                tokens.all { token -> lower.contains(token) }
+            }
+            .take(10)
     }
 
+    // --- FUNCIONES AUXILIARES ---
 
+    private fun getMakesForYear(year: Int): List<String>? = synchronized(lock) {
+        makeCache[year] ?: run {
+            val url = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year=$year"
+            try {
+                val doc = getXmlDocument(url)
+                val nodes = doc.getElementsByTagName("value")
+                val list = mutableListOf<String>()
+                for (i in 0 until nodes.length.coerceAtMost(50)) { // limitar
+                    nodes.item(i)?.textContent?.let { list.add(it) }
+                }
+                makeCache[year] = list
+                list
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    private fun getModelsForMakeYear(make: String, year: Int): List<String>? {
+        val url = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=$year&make=$make"
+        return try {
+            val doc = getXmlDocument(url)
+            val nodes = doc.getElementsByTagName("value")
+            val list = mutableListOf<String>()
+            for (i in 0 until nodes.length.coerceAtMost(30)) {
+                nodes.item(i)?.textContent?.let { list.add(it) }
+            }
+            list
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun getYearsForMakeModel(make: String, model: String): List<String>? {
+        val url = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/year?make=$make&model=$model"
+        return try {
+            val doc = getXmlDocument(url)
+            val nodes = doc.getElementsByTagName("value")
+            val list = mutableListOf<String>()
+            for (i in 0 until nodes.length) {
+                nodes.item(i)?.textContent?.let { list.add(it) }
+            }
+            list.sortedDescending() // más nuevos primero
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun addPopularModels(make: String, year: Int, suggestions: MutableList<String>, seen: MutableSet<String>) {
+        val models = getModelsForMakeYear(make, year) ?: return
+        // Tomar hasta 3 modelos (puedes ordenar por popularidad si tienes datos)
+        models.take(3).forEach { model ->
+            addSuggestion("$make $model $year", suggestions, seen)
+        }
+    }
+
+    private fun addYearsForModel(make: String, model: String, currentYear: Int, tokens: List<String>, suggestions: MutableList<String>, seen: MutableSet<String>) {
+        val years = getYearsForMakeModel(make, model) ?: return
+        // Filtrar años que contengan el token (si hay) o tomar más recientes
+        val filtered = if (tokens.size > 2) {
+            years.filter { it.startsWith(tokens[2], ignoreCase = true) }
+        } else {
+            years.sortedDescending(). distinct().take(5)
+        }
+        filtered.forEach { y ->
+            addSuggestion("$make $model $y", suggestions, seen)
+        }
+    }
+
+    private fun addSuggestion(text: String, suggestions: MutableList<String>, seen: MutableSet<String>) {
+        if (text !in seen && suggestions.size < 15) { // buffer
+            seen.add(text)
+            suggestions.add(text)
+        }
+    }
+
+    private fun containsToken(text: String, token: String): Boolean {
+        return text.startsWith(token) || fuzzyMatch(text, token)
+    }
+
+    // Búsqueda difusa simple: permite 1 error
+    private fun fuzzyMatch(text: String, token: String): Boolean {
+        if (token.length > text.length + 1) return false
+        var errors = 0
+        var i = 0
+        var j = 0
+        while (i < token.length && j < text.length) {
+            if (token[i].lowercaseChar() != text[j].lowercaseChar()) {
+                errors++
+                if (errors > 1) return false
+                j++ // permite omitir un carácter
+            } else {
+                i++
+                j++
+            }
+        }
+        return i == token.length
+    }
 
 
 }
