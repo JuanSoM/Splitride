@@ -4,8 +4,6 @@ import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.*
@@ -23,12 +21,16 @@ class MisCochesActivity : AppCompatActivity() {
     private lateinit var carsContainer: LinearLayout
     private val carsList = mutableListOf<Car>()
 
+    private var usuario: Usuario? = null
+
+
     data class Car(val brand: String, val model: String, val year: String)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.mis_coches)
-
+        // Recuperar usuario (si fue pasado desde otra Activity)
+        usuario = intent.getSerializableExtra("usuario") as? Usuario
         val logoButton = findViewById<ImageButton>(R.id.logoButton)
         val homeButton = findViewById<ImageButton>(R.id.homeButton)
         val addCarButton = findViewById<Button>(R.id.botonAnadir)
@@ -132,7 +134,7 @@ class MisCochesActivity : AppCompatActivity() {
         card.setTextColor(resources.getColor(android.R.color.white))
 
         // Doble clic → mostrar consumo
-        card.setOnClickListener(object : View.OnClickListener {
+        /**card.setOnClickListener(object : View.OnClickListener {
             private var lastClick = 0L
             override fun onClick(v: View?) {
                 val now = System.currentTimeMillis()
@@ -146,7 +148,16 @@ class MisCochesActivity : AppCompatActivity() {
                 }
                 lastClick = now
             }
+        })**/ //SE DEBERIA DE DAR UNA OPCION PARA VER EL CONSUMO
+        card.setOnClickListener(object : View.OnClickListener {
+            override fun onClick(v: View?) {
+                val intent = Intent(this@MisCochesActivity, MapActivity::class.java)
+                intent.putExtra("usuario", usuario)
+                startActivity(intent)
+            }
         })
+
+
 
         // Mantener pulsado → eliminar coche
         card.setOnLongClickListener {
