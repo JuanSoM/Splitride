@@ -73,9 +73,34 @@ class MapActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Cargar configuración de OSMDroid
         Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
         setContentView(R.layout.activity_map)
 
+        // -----------------------------------------------------------
+        // INICIO DEL CÓDIGO NUEVO: Botón Atrás y Usuario
+        // -----------------------------------------------------------
+
+        // 1. Recuperar el objeto Usuario que viene de MisCochesActivity
+        val usuario = intent.getSerializableExtra("usuario") as? Usuario
+
+        // 2. Configurar el botón de atrás
+        val btnBack = findViewById<ImageButton>(R.id.btn_back)
+        btnBack.setOnClickListener {
+            // Crear el intent para volver
+            val intent = Intent(this, MisCochesActivity::class.java)
+            // IMPORTANTE: Devolver el usuario para no perder la sesión/datos
+            intent.putExtra("usuario", usuario)
+            startActivity(intent)
+            // Cerrar esta activity para que no se acumule en la pila
+            finish()
+        }
+
+        // -----------------------------------------------------------
+        // FIN DEL CÓDIGO NUEVO
+        // -----------------------------------------------------------
+
+        // Inicialización de vistas originales
         map = findViewById(R.id.map)
         btnLocate = findViewById(R.id.btn_locate)
         btnClear = findViewById(R.id.btn_clear)
@@ -87,29 +112,30 @@ class MapActivity : AppCompatActivity() {
         hint = findViewById(R.id.hint)
         routesList = findViewById(R.id.routes_list)
 
+        // Configuración del mapa
         map.setTileSource(TileSourceFactory.DEFAULT_TILE_SOURCE)
         map.setMultiTouchControls(true)
         map.controller.setZoom(13.0)
         map.controller.setCenter(GeoPoint(40.4168, -3.7038))
 
+        // Listeners de botones existentes
         btnLocate.setOnClickListener { locateAndSetOrigin() }
         btnClear.setOnClickListener { clearAll() }
 
-        // Mostrar / ocultar botones ❌ según el texto
+        // Mostrar / ocultar botones ❌ según el texto (Origen)
         originInput.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 clearOrigin.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
             }
-
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
+        // Mostrar / ocultar botones ❌ según el texto (Destino)
         destInput.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
                 clearDest.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
             }
-
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
@@ -125,8 +151,6 @@ class MapActivity : AppCompatActivity() {
             hint.text = "Selecciona un nuevo origen en el mapa."
         }
 
-
-
         // Botón ❌ borrar destino
         clearDest.setOnClickListener {
             destInput.setText("")
@@ -137,7 +161,7 @@ class MapActivity : AppCompatActivity() {
             map.invalidate()
         }
 
-        // Control de clics en el mapa
+        // Control de clics en el mapa (MapEventsReceiver)
         val mapEventsReceiver = object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
                 if (p == null) return false
@@ -166,11 +190,13 @@ class MapActivity : AppCompatActivity() {
         }
         map.overlays.add(MapEventsOverlay(mapEventsReceiver))
 
+        // Click en sugerencias de la lista
         suggestions.setOnItemClickListener { _, _, position, _ ->
             val item = suggestions.adapter.getItem(position) as JSONObject
             setDestFromSuggestion(item)
         }
 
+        // Lógica de búsqueda con delay para no saturar la API
         destInput.addTextChangedListener(object : TextWatcher {
             private val runnable = Runnable {
                 if (!blockTextWatcher) {
@@ -189,6 +215,7 @@ class MapActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
+        // Ocultar teclado al pulsar enter/done
         destInput.setOnEditorActionListener { _, _, _ ->
             suggestions.visibility = View.GONE
             hideKeyboard(destInput)

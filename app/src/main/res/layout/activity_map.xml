@@ -12,6 +12,22 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
+    <ImageButton
+        android:id="@+id/btn_back"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="30dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/arrow_back"
+        android:background="@drawable/botonimagen"
+        android:scaleType="centerInside"
+        android:padding="12dp"
+        android:elevation="4dp"
+        android:contentDescription="Volver atrás" />
+
     <LinearLayout
         android:id="@+id/search_panel"
         android:layout_width="match_parent"
@@ -20,13 +36,13 @@
         android:padding="12dp"
         android:layout_marginTop="30dp"
         android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
+        android:layout_alignParentEnd="true"
+        android:layout_toEndOf="@id/btn_back"
+        android:layout_marginEnd="16dp"
         android:background="#B3FFFFFF"
         android:elevation="4dp"
-        android:layout_marginHorizontal="16dp"
         android:clipToOutline="true">
 
-        <!-- Campo Origen con botón ❌ -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
@@ -54,7 +70,6 @@
                 android:visibility="gone" />
         </RelativeLayout>
 
-        <!-- Campo Destino con botón ❌ -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -89,7 +104,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/search_panel"
-        android:layout_marginHorizontal="16dp"
+        android:layout_alignStart="@id/search_panel"
+        android:layout_alignEnd="@id/search_panel"
         android:background="@android:color/white"
         android:elevation="4dp"
         android:visibility="gone" />
