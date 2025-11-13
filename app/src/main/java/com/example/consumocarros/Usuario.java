@@ -52,24 +52,40 @@ public class Usuario implements Serializable {
                 '}';
     }
 
+    // --- CLASE Car MODIFICADA ---
     public static class Car implements Serializable {
         private String brand;
         private String model;
         private String year;
+        // Campos nuevos
+        private String cityKmpl;
+        private String highwayKmpl;
+        private String avgKmpl;
 
-        public Car(String brand, String model, String year) {
+        // Constructor modificado
+        public Car(String brand, String model, String year, String cityKmpl, String highwayKmpl, String avgKmpl) {
             this.brand = brand;
             this.model = model;
             this.year = year;
+            this.cityKmpl = cityKmpl;
+            this.highwayKmpl = highwayKmpl;
+            this.avgKmpl = avgKmpl;
         }
 
+        // Getters antiguos
         public String getBrand() { return brand; }
         public String getModel() { return model; }
         public String getYear() { return year; }
 
+        // Getters nuevos
+        public String getCityKmpl() { return cityKmpl; }
+        public String getHighwayKmpl() { return highwayKmpl; }
+        public String getAvgKmpl() { return avgKmpl; }
+
         @Override
         public String toString() {
-            return brand + " " + model + " " + year;
+            // Modificamos el toString para que sea más útil
+            return brand + " " + model + " " + year + " (Avg: " + avgKmpl + " km/L)";
         }
     }
 }

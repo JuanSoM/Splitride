@@ -1,5 +1,7 @@
 package com.example.consumocarros
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.w3c.dom.Document
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -8,8 +10,12 @@ import java.net.URL
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.math.round
 
+// NUEVA Data Class para empaquetar la respuesta
+data class ConsumptionData(val city: String, val highway: String, val avg: String)
+
 object ApiHelper {
 
+    // FUNCIÓN ORIGINAL (la dejamos como estaba por si se usa en otro sitio)
     fun getVehicleData(make: String, model: String, year: String): String {
         return try {
             val optionsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year=$year&make=$make&model=$model"
@@ -39,6 +45,53 @@ object ApiHelper {
         }
     }
 
+    // --- INICIO DE CÓDIGO NUEVO ---
+    /**
+     * Obtiene los datos de consumo de la API.
+     * Esta función es 'suspend' y debe llamarse desde una Coroutine.
+     * Devuelve "N/A" si no encuentra datos o hay un error.
+     */
+    suspend fun getVehicleConsumption(make: String, model: String, year: String): ConsumptionData = withContext(Dispatchers.IO) {
+        try {
+            val optionsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year=$year&make=$make&model=$model"
+            val vehicleId = getFirstVehicleId(optionsUrl)
+                ?: return@withContext ConsumptionData("N/A", "N/A", "N/A")
+
+            val dataUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/$vehicleId"
+            val doc = getXmlDocument(dataUrl)
+
+            val cityMpgNode = doc.getElementsByTagName("city08").item(0)
+            val highwayMpgNode = doc.getElementsByTagName("highway08").item(0)
+
+            // Si falta alguno de los datos clave, devolvemos N/A
+            if (cityMpgNode == null || highwayMpgNode == null) {
+                return@withContext ConsumptionData("N/A", "N/A", "N/A")
+            }
+
+            val cityMpg = cityMpgNode.textContent.toDoubleOrNull() ?: 0.0
+            val highwayMpg = highwayMpgNode.textContent.toDoubleOrNull() ?: 0.0
+
+            // Si los valores son 0, la API no tiene datos
+            if (cityMpg == 0.0 || highwayMpg == 0.0) {
+                return@withContext ConsumptionData("N/A", "N/A", "N/A")
+            }
+
+            val avgMpg = (cityMpg + highwayMpg) / 2
+
+            val cityKmpl = "%.2f".format(mpgToKmpl(cityMpg))
+            val highwayKmpl = "%.2f".format(mpgToKmpl(highwayMpg))
+            val avgKmpl = "%.2f".format(mpgToKmpl(avgMpg))
+
+            return@withContext ConsumptionData(cityKmpl, highwayKmpl, avgKmpl)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Si cualquier cosa falla (red, parseo...), devolvemos N/A
+            return@withContext ConsumptionData("N/A", "N/A", "N/A")
+        }
+    }
+    // --- FIN DE CÓDIGO NUEVO ---
+
     private fun getXmlDocument(urlStr: String): Document {
         val url = URL(urlStr)
         val conn = url.openConnection() as HttpURLConnection
@@ -49,6 +102,8 @@ object ApiHelper {
         return doc
     }
 
+    // (Resto de funciones: getFirstVehicleId, mpgToKmpl, getSuggestions, etc... van aquí debajo)
+    // ... (El resto de tu ApiHelper.kt)
     private fun getFirstVehicleId(urlStr: String): String? {
         val doc = getXmlDocument(urlStr)
         val nodeList = doc.getElementsByTagName("value")
@@ -58,15 +113,7 @@ object ApiHelper {
     private fun mpgToKmpl(mpg: Double): Double {
         return mpg * 1.60934 / 3.78541
     }
-    /**
-     * Devuelve hasta 5 sugerencias reales en formato "Make Model Year"
-     * que respetan el orden Marca -> Modelo -> Año y usan prefijos (startsWith).
-     * Ejemplos de query:
-     *  "Vo" -> marcas que empiezan por "Vo" (Volkswagen...)
-     *  "Volkswagen G" -> modelos que empiezan por "G" dentro de Volkswagen
-     *  "Volkswagen Golf 2019" -> filtra también por año que empiece por "2019"
-     */
-    // Cache: año -> lista de marcas
+
     private val makeCache = mutableMapOf<Int, List<String>>()
     private val lock = Any()
 
@@ -237,6 +284,4 @@ object ApiHelper {
         }
         return i == token.length
     }
-
-
 }

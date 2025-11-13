@@ -26,7 +26,6 @@ import java.util.List;
 
 public class LoginActivity extends Activity {
 
-    // Nombre del archivo donde se guardarán los datos modificados
     private static final String FILENAME = "usuarios_guardados.json";
 
     @Override
@@ -41,7 +40,6 @@ public class LoginActivity extends Activity {
         Button registrarse = findViewById(R.id.button_registrarse);
 
         Typeface typeface = ResourcesCompat.getFont(this, R.font.lexend_giga_medium);
-        // Typeface typeface2 = ResourcesCompat.getFont(this, R.font.lexend_giga_thin); // No se usaba
 
         title.setTypeface(typeface);
         username.setTypeface(typeface);
@@ -73,7 +71,6 @@ public class LoginActivity extends Activity {
     }
 
     private Usuario validarLogin(String usuarioInput, String contrasenaInput) {
-        // MODIFICADO: Ahora carga usando el contexto
         List<Usuario> usuarios = cargarUsuarios(this);
         for (Usuario u : usuarios) {
             if (u.getUsuario().equals(usuarioInput) && u.getContrasena().equals(contrasenaInput)) {
@@ -85,7 +82,7 @@ public class LoginActivity extends Activity {
 
     /**
      * Parsea un String JSON a una Lista de Usuarios.
-     * Esta función se extrae para no duplicar código.
+     * MODIFICADO: Lee los nuevos campos de consumo.
      */
     private static List<Usuario> parseUsuariosJson(String json) {
         List<Usuario> usuarios = new ArrayList<>();
@@ -107,7 +104,15 @@ public class LoginActivity extends Activity {
                         String brand = cocheObj.optString("brand", "");
                         String model = cocheObj.optString("model", "");
                         String year = cocheObj.optString("year", "");
-                        Usuario.Car car = new Usuario.Car(brand, model, year);
+
+                        // --- LECTURA DE CAMPOS NUEVOS ---
+                        // Usamos optString con "N/A" como valor por defecto
+                        String city = cocheObj.optString("cityKmpl", "N/A");
+                        String highway = cocheObj.optString("highwayKmpl", "N/A");
+                        String avg = cocheObj.optString("avgKmpl", "N/A");
+
+                        // Pasamos los nuevos campos al constructor
+                        Usuario.Car car = new Usuario.Car(brand, model, year, city, highway, avg);
                         usuario.agregarCoche(car);
                     }
                 }
@@ -120,8 +125,8 @@ public class LoginActivity extends Activity {
     }
 
     /**
-     * FUNCIÓN NUEVA (PÚBLICA Y ESTÁTICA):
      * Guarda la lista completa de usuarios en el almacenamiento interno.
+     * MODIFICADO: Escribe los nuevos campos de consumo.
      */
     public static void guardarUsuarios(Context context, List<Usuario> usuarios) {
         JSONArray jsonArray = new JSONArray();
@@ -139,16 +144,21 @@ public class LoginActivity extends Activity {
                     cocheObj.put("brand", car.getBrand());
                     cocheObj.put("model", car.getModel());
                     cocheObj.put("year", car.getYear());
+
+                    // --- ESCRITURA DE CAMPOS NUEVOS ---
+                    cocheObj.put("cityKmpl", car.getCityKmpl());
+                    cocheObj.put("highwayKmpl", car.getHighwayKmpl());
+                    cocheObj.put("avgKmpl", car.getAvgKmpl());
+
                     cochesArray.put(cocheObj);
                 }
                 obj.put("coches", cochesArray);
                 jsonArray.put(obj);
             }
 
-            // Escribir el string JSON al fichero interno
             FileOutputStream fos = context.openFileOutput(FILENAME, Context.MODE_PRIVATE);
             OutputStreamWriter writer = new OutputStreamWriter(fos);
-            writer.write(jsonArray.toString(4)); // toString(4) para indentar
+            writer.write(jsonArray.toString(4)); // indentado
             writer.close();
             fos.close();
 
@@ -158,9 +168,7 @@ public class LoginActivity extends Activity {
     }
 
     /**
-     * FUNCIÓN MODIFICADA (PÚBLICA Y ESTÁTICA):
-     * Carga usuarios desde el almacenamiento interno. Si no existe,
-     * carga desde assets y lo guarda en interno para la próxima vez.
+     * Carga usuarios (lógica sin cambios, depende de parseUsuariosJson)
      */
     public static List<Usuario> cargarUsuarios(Context context) {
         File file = context.getFileStreamPath(FILENAME);
@@ -168,7 +176,6 @@ public class LoginActivity extends Activity {
 
         try {
             if (!file.exists()) {
-                // 1. No existe el archivo guardado: Cargar de 'assets'
                 InputStream is = context.getAssets().open("usuarios.json");
                 int size = is.available();
                 byte[] buffer = new byte[size];
@@ -176,13 +183,11 @@ public class LoginActivity extends Activity {
                 is.close();
                 json = new String(buffer, StandardCharsets.UTF_8);
 
-                // Parsear y guardar una copia en interno
                 List<Usuario> usuarios = parseUsuariosJson(json);
-                guardarUsuarios(context, usuarios); // Guardamos la versión inicial
+                guardarUsuarios(context, usuarios);
                 return usuarios;
 
             } else {
-                // 2. Existe el archivo: Cargar de 'almacenamiento interno'
                 FileInputStream fis = context.openFileInput(FILENAME);
                 int size = fis.available();
                 byte[] buffer = new byte[size];
@@ -194,7 +199,7 @@ public class LoginActivity extends Activity {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            return new ArrayList<>(); // Devolver lista vacía en caso de error
+            return new ArrayList<>();
         }
     }
 }
