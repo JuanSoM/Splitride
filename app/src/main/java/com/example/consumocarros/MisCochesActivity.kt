@@ -22,8 +22,10 @@ class MisCochesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.mis_coches)
 
+        // Recupera el usuario pasado desde la activity anterior
         usuario = intent.getSerializableExtra("usuario") as? Usuario
 
+        // Referencias a las vistas del layout XML
         val logoButton = findViewById<ImageButton>(R.id.logoButton)
         val homeButton = findViewById<ImageButton>(R.id.homeButton)
         val addCarButton = findViewById<Button>(R.id.botonAnadir)
@@ -34,11 +36,20 @@ class MisCochesActivity : AppCompatActivity() {
 
         // Toolbar
         logoButton.setOnClickListener { /* sin acción */ }
+
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Acción del botón Home (para volver a MainActivity)
         homeButton.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java)
+
+            // ¡LA LÍNEA CORREGIDA!
+            // Añadimos el usuario al Intent para que MainActivity lo reciba
+            intent.putExtra("usuario", usuario)
+
             startActivity(intent)
-            finish()
+            finish() // Cierra MisCochesActivity
         }
+        // --- FIN DE LA CORRECCIÓN ---
 
         // Botón "Añadir coche"
         addCarButton.setOnClickListener { showAddCarDialog() }
