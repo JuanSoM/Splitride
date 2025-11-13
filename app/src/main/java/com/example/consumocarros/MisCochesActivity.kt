@@ -22,10 +22,8 @@ class MisCochesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.mis_coches)
 
-        // Recupera el usuario pasado desde la activity anterior
         usuario = intent.getSerializableExtra("usuario") as? Usuario
 
-        // Referencias a las vistas del layout XML
         val logoButton = findViewById<ImageButton>(R.id.logoButton)
         val homeButton = findViewById<ImageButton>(R.id.homeButton)
         val addCarButton = findViewById<Button>(R.id.botonAnadir)
@@ -37,19 +35,13 @@ class MisCochesActivity : AppCompatActivity() {
         // Toolbar
         logoButton.setOnClickListener { /* sin acción */ }
 
-        // --- INICIO DE LA CORRECCIÓN ---
-        // Acción del botón Home (para volver a MainActivity)
+        // Botón Home (con la corrección de sesión)
         homeButton.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java)
-
-            // ¡LA LÍNEA CORREGIDA!
-            // Añadimos el usuario al Intent para que MainActivity lo reciba
             intent.putExtra("usuario", usuario)
-
             startActivity(intent)
-            finish() // Cierra MisCochesActivity
+            finish()
         }
-        // --- FIN DE LA CORRECCIÓN ---
 
         // Botón "Añadir coche"
         addCarButton.setOnClickListener { showAddCarDialog() }
@@ -97,6 +89,7 @@ class MisCochesActivity : AppCompatActivity() {
             inputBusqueda.setText(seleccion)
         }
 
+        // --- INICIO DE LA MODIFICACIÓN (GUARDADO PERMANENTE) ---
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             val texto = inputBusqueda.text.toString().trim()
             val partes = texto.split(" ")
@@ -107,13 +100,36 @@ class MisCochesActivity : AppCompatActivity() {
                 val brand = partes.first()
 
                 val newCar = Usuario.Car(brand, model, year)
+
+                // 1. Añade el coche al objeto en RAM
                 usuario?.agregarCoche(newCar)
+
+                // 2. Actualiza la vista (UI)
                 addCarView(newCar)
+
+                // 3. Guarda el cambio permanentemente
+                if (usuario != null) {
+                    // Carga la lista completa de usuarios del disco
+                    val listaCompleta = LoginActivity.cargarUsuarios(this)
+
+                    // Busca al usuario actual en esa lista
+                    val usuarioIndex = listaCompleta.indexOfFirst { it.usuario == usuario!!.usuario }
+
+                    if (usuarioIndex != -1) {
+                        // Reemplaza el usuario antiguo por el usuario modificado (con el coche nuevo)
+                        listaCompleta[usuarioIndex] = usuario
+
+                        // Guarda la lista completa actualizada en el disco
+                        LoginActivity.guardarUsuarios(this, listaCompleta)
+                    }
+                }
+
                 dialog.dismiss()
             } else {
                 Toast.makeText(this, "Introduce un coche válido (marca modelo año)", Toast.LENGTH_SHORT).show()
             }
         }
+        // --- FIN DE LA MODIFICACIÓN ---
     }
 
     private fun addCarView(car: Usuario.Car) {
@@ -131,14 +147,26 @@ class MisCochesActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        // Mantener pulsado → eliminar coche
+        // Mantener pulsado → eliminar coche (¡Esto también necesitaría guardar!)
         card.setOnLongClickListener {
             AlertDialog.Builder(this)
                 .setTitle("Eliminar coche")
                 .setMessage("¿Quieres eliminar ${car.brand} ${car.model} ${car.year}?")
                 .setPositiveButton("Eliminar") { _, _ ->
+                    // 1. Elimina de la RAM
                     usuario?.eliminarCoche(car)
+                    // 2. Elimina de la UI
                     carsContainer.removeView(card)
+
+                    // 3. ¡Guarda el cambio! (Igual que al añadir)
+                    if (usuario != null) {
+                        val listaCompleta = LoginActivity.cargarUsuarios(this)
+                        val usuarioIndex = listaCompleta.indexOfFirst { it.usuario == usuario!!.usuario }
+                        if (usuarioIndex != -1) {
+                            listaCompleta[usuarioIndex] = usuario
+                            LoginActivity.guardarUsuarios(this, listaCompleta)
+                        }
+                    }
                 }
                 .setNegativeButton("Cancelar", null)
                 .show()
@@ -149,6 +177,8 @@ class MisCochesActivity : AppCompatActivity() {
     }
 
     private fun loadCarsFromUser() {
+        // Limpia la vista antes de cargar, por si acaso
+        carsContainer.removeAllViews()
         usuario?.getCoches()?.forEach { car ->
             addCarView(car)
         }
