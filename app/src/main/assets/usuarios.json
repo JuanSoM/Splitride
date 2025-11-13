@@ -4,7 +4,10 @@
     "contrasena": "12345",
     "nombre": "Juan",
     "apellidos": "Soriano",
-    "coches": ["Ford Mustang", "Tesla Model 3"]
+    "coches": [
+      { "brand": "Ford", "model": "Mustang", "year": "2020" },
+      { "brand": "Tesla", "model": "Model 3", "year": "2023" }
+    ]
   },
   {
     "usuario": "marta123",

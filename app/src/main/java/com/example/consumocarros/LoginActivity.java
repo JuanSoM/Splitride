@@ -1,7 +1,6 @@
 package com.example.consumocarros;
 
 import android.app.Activity;
-
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
@@ -13,9 +12,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-
 
 public class LoginActivity extends Activity {
 
@@ -23,6 +22,7 @@ public class LoginActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
         TextView title = findViewById(R.id.textView);
         EditText username = findViewById(R.id.TextUsername);
         EditText password = findViewById(R.id.TextPassword);
@@ -35,6 +35,7 @@ public class LoginActivity extends Activity {
         title.setTypeface(typeface);
         username.setTypeface(typeface);
         password.setTypeface(typeface);
+
         iniciar_sesion.setOnClickListener(v -> {
             String usuarioInput = username.getText().toString().trim();
             String contrasenaInput = password.getText().toString().trim();
@@ -46,16 +47,19 @@ public class LoginActivity extends Activity {
 
             Usuario usuario = validarLogin(usuarioInput, contrasenaInput);
             if (usuario != null) {
-                Toast.makeText(this, "Login exitoso. Bienvenido " + usuario.nombre, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Login exitoso. Bienvenido " + usuario.getNombre(), Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                 intent.putExtra("usuario", usuario);
                 startActivity(intent);
-
             } else {
                 Toast.makeText(this, "Usuario o contraseña incorrectos", Toast.LENGTH_SHORT).show();
             }
         });
 
+        // El botón de "registrarse" puedes implementarlo después
+        registrarse.setOnClickListener(v ->
+                Toast.makeText(this, "Función de registro aún no implementada", Toast.LENGTH_SHORT).show()
+        );
     }
 
     private Usuario validarLogin(String usuarioInput, String contrasenaInput) {
@@ -67,6 +71,11 @@ public class LoginActivity extends Activity {
         }
         return null;
     }
+
+    /**
+     * Carga los usuarios desde usuarios.json
+     * y también los coches asociados a cada uno.
+     */
     public List<Usuario> cargarUsuarios() {
         List<Usuario> usuarios = new ArrayList<>();
         try {
@@ -75,7 +84,7 @@ public class LoginActivity extends Activity {
             byte[] buffer = new byte[size];
             is.read(buffer);
             is.close();
-            String json = new String(buffer, "UTF-8");
+            String json = new String(buffer, StandardCharsets.UTF_8);
 
             JSONArray array = new JSONArray(json);
             for (int i = 0; i < array.length(); i++) {
@@ -87,9 +96,17 @@ public class LoginActivity extends Activity {
                         obj.getString("apellidos")
                 );
 
-                JSONArray cochesArray = obj.getJSONArray("coches");
-                for (int j = 0; j < cochesArray.length(); j++) {
-                    usuario.agregarCoche(cochesArray.getString(j));
+                // ✅ Ahora los coches son objetos con marca, modelo, año
+                JSONArray cochesArray = obj.optJSONArray("coches");
+                if (cochesArray != null) {
+                    for (int j = 0; j < cochesArray.length(); j++) {
+                        JSONObject cocheObj = cochesArray.getJSONObject(j);
+                        String brand = cocheObj.optString("brand", "");
+                        String model = cocheObj.optString("model", "");
+                        String year = cocheObj.optString("year", "");
+                        Usuario.Car car = new Usuario.Car(brand, model, year);
+                        usuario.agregarCoche(car);
+                    }
                 }
 
                 usuarios.add(usuario);

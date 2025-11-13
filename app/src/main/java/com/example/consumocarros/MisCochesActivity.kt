@@ -1,7 +1,6 @@
 package com.example.consumocarros
 
 import android.app.AlertDialog
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -13,31 +12,25 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
 
 class MisCochesActivity : AppCompatActivity() {
 
     private lateinit var carsContainer: LinearLayout
-    private val carsList = mutableListOf<Car>()
-
     private var usuario: Usuario? = null
-
-
-    data class Car(val brand: String, val model: String, val year: String)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.mis_coches)
-        // Recuperar usuario (si fue pasado desde otra Activity)
+
         usuario = intent.getSerializableExtra("usuario") as? Usuario
+
         val logoButton = findViewById<ImageButton>(R.id.logoButton)
         val homeButton = findViewById<ImageButton>(R.id.homeButton)
         val addCarButton = findViewById<Button>(R.id.botonAnadir)
         carsContainer = findViewById(R.id.contenedorCoches)
 
-        // Cargar coches guardados
-        loadCars()
+        // Cargar coches del usuario
+        loadCarsFromUser()
 
         // Toolbar
         logoButton.setOnClickListener { /* sin acción */ }
@@ -48,14 +41,9 @@ class MisCochesActivity : AppCompatActivity() {
         }
 
         // Botón "Añadir coche"
-        addCarButton.setOnClickListener {
-            showAddCarDialog()
-        }
+        addCarButton.setOnClickListener { showAddCarDialog() }
     }
 
-    /**
-     * Diálogo inteligente para añadir coches
-     */
     private fun showAddCarDialog() {
         val inflater = LayoutInflater.from(this)
         val dialogView = inflater.inflate(R.layout.dialogo_anadir_coche, null)
@@ -65,7 +53,6 @@ class MisCochesActivity : AppCompatActivity() {
         val adapter = ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, mutableListOf())
         listaSugerencias.adapter = adapter
 
-        // Actualizar sugerencias mientras escribe
         inputBusqueda.addTextChangedListener(object : android.text.TextWatcher {
             override fun afterTextChanged(s: android.text.Editable?) {}
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -94,13 +81,11 @@ class MisCochesActivity : AppCompatActivity() {
 
         dialog.show()
 
-        // Al pulsar sobre una sugerencia
         listaSugerencias.setOnItemClickListener { _, _, position, _ ->
             val seleccion = adapter.getItem(position)
             inputBusqueda.setText(seleccion)
         }
 
-        // Al pulsar "Añadir"
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             val texto = inputBusqueda.text.toString().trim()
             val partes = texto.split(" ")
@@ -110,10 +95,9 @@ class MisCochesActivity : AppCompatActivity() {
                 val model = partes.drop(1).dropLast(1).joinToString(" ")
                 val brand = partes.first()
 
-                val newCar = Car(brand, model, year)
-                carsList.add(newCar)
+                val newCar = Usuario.Car(brand, model, year)
+                usuario?.agregarCoche(newCar)
                 addCarView(newCar)
-                saveCars()
                 dialog.dismiss()
             } else {
                 Toast.makeText(this, "Introduce un coche válido (marca modelo año)", Toast.LENGTH_SHORT).show()
@@ -121,11 +105,7 @@ class MisCochesActivity : AppCompatActivity() {
         }
     }
 
-
-    /**
-     * Crear la vista visual de un coche
-     */
-    private fun addCarView(car: Car) {
+    private fun addCarView(car: Usuario.Car) {
         val card = TextView(this)
         card.text = "${car.brand} ${car.model} ${car.year}"
         card.textSize = 20f
@@ -133,31 +113,12 @@ class MisCochesActivity : AppCompatActivity() {
         card.setBackgroundResource(R.drawable.rounded_menu)
         card.setTextColor(resources.getColor(android.R.color.white))
 
-        // Doble clic → mostrar consumo
-        /**card.setOnClickListener(object : View.OnClickListener {
-            private var lastClick = 0L
-            override fun onClick(v: View?) {
-                val now = System.currentTimeMillis()
-                if (now - lastClick < 400) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val result = ApiHelper.getVehicleData(car.brand, car.model, car.year)
-                        withContext(Dispatchers.Main) {
-                            showResult(result)
-                        }
-                    }
-                }
-                lastClick = now
-            }
-        })**/ //SE DEBERIA DE DAR UNA OPCION PARA VER EL CONSUMO
-        card.setOnClickListener(object : View.OnClickListener {
-            override fun onClick(v: View?) {
-                val intent = Intent(this@MisCochesActivity, MapActivity::class.java)
-                intent.putExtra("usuario", usuario)
-                startActivity(intent)
-            }
-        })
-
-
+        // Click → ir a pantalla mapa
+        card.setOnClickListener {
+            val intent = Intent(this@MisCochesActivity, MapActivity::class.java)
+            intent.putExtra("usuario", usuario)
+            startActivity(intent)
+        }
 
         // Mantener pulsado → eliminar coche
         card.setOnLongClickListener {
@@ -165,9 +126,8 @@ class MisCochesActivity : AppCompatActivity() {
                 .setTitle("Eliminar coche")
                 .setMessage("¿Quieres eliminar ${car.brand} ${car.model} ${car.year}?")
                 .setPositiveButton("Eliminar") { _, _ ->
-                    carsList.remove(car)
+                    usuario?.eliminarCoche(car)
                     carsContainer.removeView(card)
-                    saveCars()
                 }
                 .setNegativeButton("Cancelar", null)
                 .show()
@@ -177,51 +137,9 @@ class MisCochesActivity : AppCompatActivity() {
         carsContainer.addView(card)
     }
 
-    /**
-     * Mostrar consumo del vehículo
-     */
-    private fun showResult(text: String) {
-        AlertDialog.Builder(this)
-            .setTitle("Consumo del vehículo")
-            .setMessage(text)
-            .setPositiveButton("OK", null)
-            .show()
-    }
-
-    /**
-     * Guardar lista de coches
-     */
-    private fun saveCars() {
-        val sharedPrefs = getSharedPreferences("MyCarsPrefs", Context.MODE_PRIVATE)
-        val jsonArray = JSONArray()
-        for (car in carsList) {
-            val obj = JSONObject()
-            obj.put("brand", car.brand)
-            obj.put("model", car.model)
-            obj.put("year", car.year)
-            jsonArray.put(obj)
-        }
-        sharedPrefs.edit().putString("cars", jsonArray.toString()).apply()
-    }
-
-    /**
-     * Cargar lista de coches guardados
-     */
-    private fun loadCars() {
-        val sharedPrefs = getSharedPreferences("MyCarsPrefs", Context.MODE_PRIVATE)
-        val jsonString = sharedPrefs.getString("cars", null)
-        if (jsonString != null) {
-            val jsonArray = JSONArray(jsonString)
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
-                val car = Car(
-                    obj.getString("brand"),
-                    obj.getString("model"),
-                    obj.getString("year")
-                )
-                carsList.add(car)
-                addCarView(car)
-            }
+    private fun loadCarsFromUser() {
+        usuario?.getCoches()?.forEach { car ->
+            addCarView(car)
         }
     }
 }
