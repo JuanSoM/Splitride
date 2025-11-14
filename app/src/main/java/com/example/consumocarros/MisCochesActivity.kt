@@ -178,7 +178,7 @@ class MisCochesActivity : AppCompatActivity() {
         card.setOnClickListener {
             val intent = Intent(this@MisCochesActivity, MapActivity::class.java)
             intent.putExtra("usuario", usuario)
-            // TODO: Quizás quieras pasar el consumo del coche al MapActivity?
+            // TODO: Quizás quieras pasar el consumo del coche al MapActivity? (si)
             // intent.putExtra("car_consumption", car.getAvgKmpl())
             startActivity(intent)
         }

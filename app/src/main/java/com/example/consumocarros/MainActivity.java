@@ -85,6 +85,16 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Acción del botón depositivo
+        botoncombustible.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, DepositoActivity.class);
+                intent.putExtra("usuario", usuarioconectado);
+                startActivity(intent);
+            }
+        });
+
         // Acción del botón del logo
         logoButton.setOnClickListener(new View.OnClickListener() {
             @Override

@@ -36,24 +36,24 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="48dp"
+        android:layout_marginTop="40dp"
         android:layout_marginEnd="48dp"
         android:hint="Usuario"
-        android:textColorHint="@color/white"
+        android:textColorHint="@color/black"
         app:boxStrokeColor="@color/white"
         app:hintTextColor="@color/white"
         app:layout_constraintBottom_toTopOf="@+id/layout_password"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/textView"
-        app:layout_constraintVertical_chainStyle="packed"
-        android:layout_marginTop="40dp">
+        app:layout_constraintVertical_chainStyle="packed">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/TextUsername"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="text"
-            android:textColor="@color/white" />
+            android:textColor="@color/black" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -66,7 +66,7 @@
         android:layout_marginTop="16dp"
         android:layout_marginEnd="48dp"
         android:hint="Contraseña"
-        android:textColorHint="@color/white"
+        android:textColorHint="@color/black"
         app:boxStrokeColor="@color/white"
         app:endIconMode="password_toggle"
         app:endIconTint="@color/white"
@@ -81,7 +81,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="textPassword"
-            android:textColor="@color/white" />
+            android:textColor="@color/black" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
