@@ -30,7 +30,6 @@
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
                 android:layout_height="136dp">
-
                 <Button
                     android:id="@+id/botoncuenta"
                     android:layout_width="80dp"
@@ -72,52 +71,51 @@
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"> <androidx.constraintlayout.widget.ConstraintLayout
-                    android:id="@+id/botonRide"
-                    android:layout_width="375dp"
-                    android:layout_height="140dp"
-                    android:layout_marginStart="17dp"
-                    android:layout_marginEnd="16dp"
-                    android:background="@drawable/rounded_button"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:padding="16dp"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    tools:ignore="MissingConstraints">
-
-                    <TextView
-                        android:id="@+id/textViewNuevoViaje"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/lexend_giga_medium"
-                        android:text="Nuevo\nViaje"
-                        android:textColor="#333333"
-                        android:textSize="28sp"
-                        android:textStyle="bold"
-                        app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintEnd_toStartOf="@+id/imageViewMaps"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
-                        android:layout_marginStart="16dp"
-                        android:layout_marginEnd="16dp" />
-
-                    <ImageView
-                        android:id="@+id/imageViewMaps"
-                        android:layout_width="100dp"
-                        android:layout_height="100dp"
+                    android:layout_height="wrap_content">
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/botonRide"
+                        android:layout_width="375dp"
+                        android:layout_height="140dp"
+                        android:layout_marginStart="17dp"
                         android:layout_marginEnd="16dp"
-                        android:src="@drawable/maps"
-                        android:scaleType="fitCenter"
+                        android:background="@drawable/rounded_button"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:padding="16dp"
                         app:layout_constraintBottom_toBottomOf="parent"
                         app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintTop_toTopOf="parent" />
-
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        tools:ignore="MissingConstraints">
+                        <TextView
+                            android:id="@+id/textViewNuevoViaje"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="@font/lexend_giga_medium"
+                            android:text="Nuevo\nViaje"
+                            android:textColor="#333333"
+                            android:textSize="28sp"
+                            android:textStyle="bold"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toStartOf="@+id/imageViewMaps"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            android:layout_marginStart="16dp"
+                            android:layout_marginEnd="16dp" />
+                        <ImageView
+                            android:id="@+id/imageViewMaps"
+                            android:layout_width="100dp"
+                            android:layout_height="100dp"
+                            android:layout_marginEnd="16dp"
+                            android:src="@drawable/maps"
+                            android:scaleType="fitCenter"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
                 </androidx.constraintlayout.widget.ConstraintLayout>
 
-                </androidx.constraintlayout.widget.ConstraintLayout>
+
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
@@ -138,6 +136,7 @@
                             android:layout_weight="1"
                             android:background="@drawable/rounded_button"
                             android:text="Button"
+                            android:textColor="@color/black"
                             app:layout_constraintBottom_toBottomOf="parent"
                             app:layout_constraintEnd_toEndOf="parent"
                             app:layout_constraintStart_toEndOf="@+id/button8"
@@ -152,6 +151,7 @@
                             android:layout_weight="1"
                             android:background="@drawable/rounded_button"
                             android:text="Button"
+                            android:textColor="@color/black"
                             app:layout_constraintBottom_toBottomOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
                             app:layout_constraintTop_toTopOf="parent" />
@@ -179,6 +179,7 @@
                             android:layout_weight="1"
                             android:background="@drawable/rounded_button"
                             android:text="Button"
+                            android:textColor="@color/black"
                             app:layout_constraintBottom_toBottomOf="parent"
                             app:layout_constraintEnd_toEndOf="parent"
                             app:layout_constraintStart_toStartOf="parent"
@@ -210,7 +211,6 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
-
             <ImageButton
                 android:id="@+id/logoButton"
                 android:layout_width="40dp"
@@ -222,7 +222,6 @@
                 android:layout_alignParentStart="true"
                 android:layout_marginStart="30dp"
                 android:contentDescription="@string/app_name" />
-
             <ImageButton
                 android:id="@+id/homeButton"
                 android:layout_width="40dp"
@@ -236,6 +235,5 @@
                 android:contentDescription="Ir a inicio" />
         </RelativeLayout>
     </androidx.appcompat.widget.Toolbar>
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>
