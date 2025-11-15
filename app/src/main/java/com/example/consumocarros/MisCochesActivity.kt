@@ -73,23 +73,38 @@ class MisCochesActivity : AppCompatActivity() {
             }
         })
 
-        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
-            .setTitle("Añadir coche")
+        // Crear el AlertDialog con tema base
+        val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
-            .setPositiveButton("Añadir", null) // El listener se pone después de .show()
+            .setPositiveButton("Añadir", null)
             .setNegativeButton("Cancelar", null)
             .create()
 
         dialog.show()
 
+        // --- Aplicar fondo redondeado negro ---
+        dialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
+
+        // --- Título personalizado en blanco ---
+        val titleView = TextView(this)
+        titleView.text = "Añadir coche"
+        titleView.setTextColor(android.graphics.Color.WHITE)
+        titleView.textSize = 18f
+        titleView.setPadding(24)
+        dialog.setCustomTitle(titleView)
+
+        // --- Botones blancos ---
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(android.graphics.Color.WHITE)
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(android.graphics.Color.WHITE)
+
+        // Selección de sugerencias
         listaSugerencias.setOnItemClickListener { _, _, position, _ ->
             val seleccion = adapter.getItem(position)
             inputBusqueda.setText(seleccion)
-            listaSugerencias.adapter = null // Ocultar lista al seleccionar
+            listaSugerencias.adapter = null
         }
 
         val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-
         positiveButton.setOnClickListener {
             val texto = inputBusqueda.text.toString().trim()
             val partes = texto.split(" ")
@@ -107,8 +122,6 @@ class MisCochesActivity : AppCompatActivity() {
                 CoroutineScope(Dispatchers.Main).launch {
                     val consumption = ApiHelper.getVehicleConsumption(brand, model, year)
 
-                    // --- CORRECCIÓN DE UNIDADES ---
-                    // La API devuelve L/100km. Lo convertimos a km/L.
                     val cityL100km = consumption.city.toDoubleOrNull() ?: 0.0
                     val highwayL100km = consumption.highway.toDoubleOrNull() ?: 0.0
                     val avgL100km = consumption.avg.toDoubleOrNull() ?: 0.0
@@ -145,6 +158,7 @@ class MisCochesActivity : AppCompatActivity() {
         }
     }
 
+
     private fun addCarView(car: Usuario.Car) {
         val card = TextView(this)
 
@@ -166,6 +180,7 @@ class MisCochesActivity : AppCompatActivity() {
         card.layoutParams = params
 
         card.setOnClickListener {
+            usuario?.aumentaruso(car);
             val intent = Intent(this@MisCochesActivity, MapActivity::class.java)
             intent.putExtra("usuario", usuario)
             intent.putExtra("selected_car", car) // Pasamos el coche seleccionado
@@ -173,9 +188,15 @@ class MisCochesActivity : AppCompatActivity() {
         }
 
         card.setOnLongClickListener {
-            AlertDialog.Builder(this)
-                .setTitle("Eliminar coche")
-                .setMessage("¿Quieres eliminar ${car.brand} ${car.model} (${car.avgKmpl} km/L)?")
+            // Crear el TextView para el mensaje con color blanco
+            val messageView = TextView(this)
+            messageView.text = "¿Quieres eliminar ${car.brand} ${car.model} (${car.avgKmpl} km/L)?"
+            messageView.setTextColor(android.graphics.Color.WHITE)
+            messageView.setPadding(40)  // opcional para dar margen interno
+            messageView.textSize = 16f
+
+            val deleteDialog = AlertDialog.Builder(this)
+                .setView(messageView)  // <-- Usamos el TextView como vista principal
                 .setPositiveButton("Eliminar") { _, _ ->
                     usuario?.eliminarCoche(car)
                     carsContainer.removeView(card)
@@ -190,9 +211,22 @@ class MisCochesActivity : AppCompatActivity() {
                     }
                 }
                 .setNegativeButton("Cancelar", null)
-                .show()
+                .create()
+
+            // Fondo redondeado negro
+            deleteDialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
+
+            // Mostrar diálogo
+            deleteDialog.show()
+
+            // Botones blancos
+            deleteDialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(android.graphics.Color.WHITE)
+            deleteDialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(android.graphics.Color.WHITE)
+
             true
         }
+
+
 
         carsContainer.addView(card)
     }
@@ -202,3 +236,5 @@ class MisCochesActivity : AppCompatActivity() {
         usuario?.getCoches()?.forEach { car -> addCarView(car) }
     }
 }
+
+

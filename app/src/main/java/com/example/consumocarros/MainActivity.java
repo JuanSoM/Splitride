@@ -25,12 +25,13 @@ public class MainActivity extends AppCompatActivity {
         usuarioconectado = (Usuario) getIntent().getSerializableExtra("usuario");
 
         // Referencias a los elementos
-        TextView textoincio = findViewById(R.id.textViewNombre);
+        TextView textoincio = findViewById(R.id.textViewCochess);
         Button botoncuenta = findViewById(R.id.botoncuenta); // Botón de cuenta
         View botonride = findViewById(R.id.botonRide);
         Button botoncombustible = findViewById(R.id.botoncombustible);
         ImageButton logoButton = findViewById(R.id.logoButton);
         ImageButton homeButton = findViewById(R.id.homeButton);
+        ImageButton gasofaButton = findViewById(R.id.gasofaButton);
 
         capacidadcombustible = 50;
 
@@ -38,6 +39,15 @@ public class MainActivity extends AppCompatActivity {
         if (usuarioconectado != null) {
             textoincio.setText("Hola " + usuarioconectado.nombre);
         }
+
+        gasofaButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, DepositoActivity.class);
+                intent.putExtra("usuario", usuarioconectado);
+                startActivity(intent);
+            }
+        });
 
         // --- INICIO DE CÓDIGO NUEVO: Lógica del botón de cuenta ---
         botoncuenta.setOnClickListener(new View.OnClickListener() {

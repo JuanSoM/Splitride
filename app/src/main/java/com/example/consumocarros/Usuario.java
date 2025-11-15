@@ -11,6 +11,7 @@ public class Usuario implements Serializable {
     public String nombre;
     public String apellidos;
     public List<Car> coches; // lista de coches del usuario
+    public Car cochemasusado;
 
     public Usuario(String contrasena, String usuario, String nombre, String apellidos) {
         this.contrasena = contrasena;
@@ -41,6 +42,25 @@ public class Usuario implements Serializable {
     public void eliminarCoche(Car coche) {
         this.coches.remove(coche);
     }
+    public void aumentaruso(Car coche){
+
+        for(Car rayo: this.coches){
+            if(rayo.equals(coche)){
+                rayo.vecesusado++;
+                break;
+            }
+        }
+    }
+    public Car cochemasusado(){
+        Car piston = new Car("rayo", "macqueen", "0","Copapisaton","joder","nosequemasponer");
+        for(Car rayo: this.coches){
+            if(piston.vecesusado<= rayo.vecesusado){
+                piston = rayo;
+            }
+        }
+        return piston;
+    }
+
 
     @Override
     public String toString() {
@@ -61,6 +81,8 @@ public class Usuario implements Serializable {
         private String cityKmpl;
         private String highwayKmpl;
         private String avgKmpl;
+        private int capacidaddeposito;
+        private int vecesusado;
 
         // Constructor modificado
         public Car(String brand, String model, String year, String cityKmpl, String highwayKmpl, String avgKmpl) {
@@ -70,6 +92,8 @@ public class Usuario implements Serializable {
             this.cityKmpl = cityKmpl;
             this.highwayKmpl = highwayKmpl;
             this.avgKmpl = avgKmpl;
+            this.capacidaddeposito = -1;
+            this.vecesusado = 0;
         }
 
         // Getters antiguos
@@ -81,6 +105,12 @@ public class Usuario implements Serializable {
         public String getCityKmpl() { return cityKmpl; }
         public String getHighwayKmpl() { return highwayKmpl; }
         public String getAvgKmpl() { return avgKmpl; }
+        public int getcapacidaddeposito() { return capacidaddeposito; }
+        public int getvecesusado() { return vecesusado; }
+
+        public void setCapacidaddeposito(int capacidaddeposito) {
+            this.capacidaddeposito = capacidaddeposito;
+        }
 
         @Override
         public String toString() {
