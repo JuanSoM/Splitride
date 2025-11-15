@@ -58,6 +58,11 @@ class MapActivity : AppCompatActivity() {
     private val routePolylines = mutableListOf<Polyline>()
     private val routesData = mutableListOf<JSONObject>()
 
+    // --- NUEVAS VARIABLES DE CONSUMO ---
+    private var consumptionCityKmpl: Double = 10.0  // Consumo en ciudad (km/L) - Valor por defecto
+    private var consumptionHighwayKmpl: Double = 14.2 // Consumo en autovía (km/L) - Valor por defecto
+    // --- FIN DE VARIABLES ---
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -67,40 +72,33 @@ class MapActivity : AppCompatActivity() {
 
     companion object {
         const val REQ_LOCATION = 100
-        const val CONSUMO_PROMEDIO_L_100KM = 7.0
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Cargar configuración de OSMDroid
         Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
         setContentView(R.layout.activity_map)
 
-        // -----------------------------------------------------------
-        // INICIO DEL CÓDIGO NUEVO: Botón Atrás y Usuario
-        // -----------------------------------------------------------
-
-        // 1. Recuperar el objeto Usuario que viene de MisCochesActivity
         val usuario = intent.getSerializableExtra("usuario") as? Usuario
 
-        // 2. Configurar el botón de atrás
+        // --- NUEVO: RECUPERAR DATOS DEL COCHE ---
+        val selectedCar = intent.getSerializableExtra("selected_car") as? Usuario.Car
+        selectedCar?.let {
+            // Convierte a Double. Si es "N/A" o inválido, se mantiene el valor por defecto.
+            it.cityKmpl.toDoubleOrNull()?.let { city -> consumptionCityKmpl = city }
+            it.highwayKmpl.toDoubleOrNull()?.let { highway -> consumptionHighwayKmpl = highway }
+        }
+        // --- FIN DEL CÓDIGO NUEVO ---
+
         val btnBack = findViewById<ImageButton>(R.id.btn_back)
         btnBack.setOnClickListener {
-            // Crear el intent para volver
             val intent = Intent(this, MisCochesActivity::class.java)
-            // IMPORTANTE: Devolver el usuario para no perder la sesión/datos
             intent.putExtra("usuario", usuario)
             startActivity(intent)
-            // Cerrar esta activity para que no se acumule en la pila
             finish()
         }
 
-        // -----------------------------------------------------------
-        // FIN DEL CÓDIGO NUEVO
-        // -----------------------------------------------------------
-
-        // Inicialización de vistas originales
         map = findViewById(R.id.map)
         btnLocate = findViewById(R.id.btn_locate)
         btnClear = findViewById(R.id.btn_clear)
@@ -112,35 +110,26 @@ class MapActivity : AppCompatActivity() {
         hint = findViewById(R.id.hint)
         routesList = findViewById(R.id.routes_list)
 
-        // Configuración del mapa
         map.setTileSource(TileSourceFactory.DEFAULT_TILE_SOURCE)
         map.setMultiTouchControls(true)
         map.controller.setZoom(13.0)
         map.controller.setCenter(GeoPoint(40.4168, -3.7038))
 
-        // Listeners de botones existentes
         btnLocate.setOnClickListener { locateAndSetOrigin() }
         btnClear.setOnClickListener { clearAll() }
 
-        // Mostrar / ocultar botones ❌ según el texto (Origen)
         originInput.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                clearOrigin.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
-            }
+            override fun afterTextChanged(s: Editable?) { clearOrigin.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        // Mostrar / ocultar botones ❌ según el texto (Destino)
         destInput.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                clearDest.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE
-            }
+            override fun afterTextChanged(s: Editable?) { clearDest.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        // Botón ❌ borrar origen
         clearOrigin.setOnClickListener {
             originInput.setText("")
             origin = null
@@ -151,7 +140,6 @@ class MapActivity : AppCompatActivity() {
             hint.text = "Selecciona un nuevo origen en el mapa."
         }
 
-        // Botón ❌ borrar destino
         clearDest.setOnClickListener {
             destInput.setText("")
             dest = null
@@ -161,11 +149,10 @@ class MapActivity : AppCompatActivity() {
             map.invalidate()
         }
 
-        // Control de clics en el mapa (MapEventsReceiver)
         val mapEventsReceiver = object : MapEventsReceiver {
             override fun singleTapConfirmedHelper(p: GeoPoint?): Boolean {
                 if (p == null) return false
-                suggestions.visibility = View.GONE // oculta sugerencias si se toca el mapa
+                suggestions.visibility = View.GONE
 
                 when {
                     origin == null -> {
@@ -177,7 +164,7 @@ class MapActivity : AppCompatActivity() {
                         hint.text = "Destino establecido. Calculando rutas..."
                         requestRoutes()
                     }
-                    else -> { // si ya hay ambos → reemplazar destino
+                    else -> {
                         setDest(p)
                         hint.text = "Destino cambiado. Calculando nuevas rutas..."
                         requestRoutes()
@@ -185,37 +172,27 @@ class MapActivity : AppCompatActivity() {
                 }
                 return true
             }
-
             override fun longPressHelper(p: GeoPoint?): Boolean = false
         }
         map.overlays.add(MapEventsOverlay(mapEventsReceiver))
 
-        // Click en sugerencias de la lista
         suggestions.setOnItemClickListener { _, _, position, _ ->
             val item = suggestions.adapter.getItem(position) as JSONObject
             setDestFromSuggestion(item)
         }
 
-        // Lógica de búsqueda con delay para no saturar la API
         destInput.addTextChangedListener(object : TextWatcher {
             private val runnable = Runnable {
                 if (!blockTextWatcher) {
                     val q = destInput.text.toString().trim()
-                    if (q.length >= 3) searchNominatim(q)
-                    else suggestions.visibility = View.GONE
+                    if (q.length >= 3) searchNominatim(q) else suggestions.visibility = View.GONE
                 }
             }
-
-            override fun afterTextChanged(s: Editable?) {
-                destInput.removeCallbacks(runnable)
-                destInput.postDelayed(runnable, 400)
-            }
-
+            override fun afterTextChanged(s: Editable?) { destInput.removeCallbacks(runnable); destInput.postDelayed(runnable, 400) }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        // Ocultar teclado al pulsar enter/done
         destInput.setOnEditorActionListener { _, _, _ ->
             suggestions.visibility = View.GONE
             hideKeyboard(destInput)
@@ -243,31 +220,17 @@ class MapActivity : AppCompatActivity() {
         requestRoutes()
     }
 
-    override fun onResume() {
-        super.onResume()
-        map.onResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        map.onPause()
-    }
+    override fun onResume() { super.onResume(); map.onResume() }
+    override fun onPause() { super.onPause(); map.onPause() }
 
     private fun locateAndSetOrigin() {
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                REQ_LOCATION
-            )
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQ_LOCATION)
             return
         }
         val lm = getSystemService(LOCATION_SERVICE) as LocationManager
         try {
-            val last = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-                ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+            val last = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER) ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
             if (last != null) {
                 val gp = GeoPoint(last.latitude, last.longitude)
                 setOrigin(gp)
@@ -298,32 +261,19 @@ class MapActivity : AppCompatActivity() {
     private fun setOrigin(gp: GeoPoint) {
         origin = gp
         if (originMarker == null) {
-            originMarker = Marker(map).apply {
-                title = "Origen"
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            }
+            originMarker = Marker(map).apply { title = "Origen"; setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM) }
             map.overlays.add(originMarker)
         }
         originMarker!!.position = gp
         reverseSearchNominatim(gp, isOrigin = true)
         map.invalidate()
-
-        // ✅ Si ya existe destino cuando establecemos origen, recalcular rutas
-        if (dest != null) {
-            clearRoutes()
-            requestRoutes()
-        }
+        if (dest != null) { clearRoutes(); requestRoutes() }
     }
-
-
 
     private fun setDest(gp: GeoPoint) {
         dest = gp
         if (destMarker == null) {
-            destMarker = Marker(map).apply {
-                title = "Destino"
-                setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            }
+            destMarker = Marker(map).apply { title = "Destino"; setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM) }
             map.overlays.add(destMarker)
         }
         destMarker!!.position = gp
@@ -335,11 +285,7 @@ class MapActivity : AppCompatActivity() {
         map.invalidate()
     }
 
-
-
-
-
-private fun searchNominatim(q: String) {
+    private fun searchNominatim(q: String) {
         val url = "https://nominatim.openstreetmap.org/search?format=jsonv2&q=${Uri.encode(q)}&addressdetails=1&limit=6"
         val req = Request.Builder().url(url).header("Accept-Language", "es").header("User-Agent", packageName).build()
         client.newCall(req).enqueue(object : Callback {
@@ -347,15 +293,12 @@ private fun searchNominatim(q: String) {
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     if (!it.isSuccessful) return
-                    val items = (JSONArray(it.body?.string() ?: "[]")).let {
-                        0.until(it.length()).map { i -> it.getJSONObject(i) }
-                    }
+                    val items = (JSONArray(it.body?.string() ?: "[]")).let { 0.until(it.length()).map { i -> it.getJSONObject(i) } }
                     runOnUiThread {
                         val adapter = object : ArrayAdapter<JSONObject>(this@MapActivity, android.R.layout.simple_list_item_1, items) {
-                            override fun getView(pos: Int, view: View?, parent: ViewGroup) =
-                                (super.getView(pos, view, parent) as TextView).apply {
-                                    text = getItem(pos)?.optString("display_name") ?: ""
-                                }
+                            override fun getView(pos: Int, view: View?, parent: ViewGroup) = (super.getView(pos, view, parent) as TextView).apply {
+                                text = getItem(pos)?.optString("display_name") ?: ""
+                            }
                         }
                         suggestions.adapter = adapter
                         suggestions.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
@@ -410,6 +353,28 @@ private fun searchNominatim(q: String) {
         })
     }
 
+    // --- NUEVO: MÉTODO PARA CALCULAR CONSUMO ---
+    private fun calculateConsumption(distanceMeters: Double, durationSeconds: Double): Double {
+        if (durationSeconds <= 0 || (consumptionCityKmpl <= 0 && consumptionHighwayKmpl <= 0)) {
+            return 0.0
+        }
+
+        val speedKph = (distanceMeters / 1000.0) / (durationSeconds / 3600.0)
+
+        // Si la velocidad es > 60km/h, usamos consumo de autovía, sino de ciudad.
+        val kmpl = if (speedKph > 60 && consumptionHighwayKmpl > 0) {
+            consumptionHighwayKmpl
+        } else if (consumptionCityKmpl > 0) {
+            consumptionCityKmpl
+        } else {
+            consumptionHighwayKmpl // Fallback por si el de ciudad es 0
+        }
+
+        // Consumo en Litros = (distancia en km) / (km por Litro)
+        return (distanceMeters / 1000.0) / kmpl
+    }
+    // --- FIN DEL MÉTODO ---
+
     private fun drawRoutes() {
         routePolylines.forEach { map.overlays.remove(it) }
         routePolylines.clear()
@@ -441,7 +406,9 @@ private fun searchNominatim(q: String) {
 
             val dist = r.optDouble("distance", 0.0)
             val dur = r.optDouble("duration", 0.0)
-            val consumoLitros = (dist / 1000.0 / 100.0) * CONSUMO_PROMEDIO_L_100KM
+
+            // --- MODIFICADO: USA EL NUEVO MÉTODO DE CÁLCULO ---
+            val consumoLitros = calculateConsumption(dist, dur)
             routeInfoList.add(RouteInfo("Ruta ${i + 1}", "${formatDistance(dist)} · ${formatDuration(dur)} · %.2f L".format(consumoLitros), poly.color))
         }
 

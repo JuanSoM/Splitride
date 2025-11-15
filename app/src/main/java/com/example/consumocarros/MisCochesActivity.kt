@@ -4,7 +4,6 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.setPadding
@@ -12,6 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class MisCochesActivity : AppCompatActivity() {
 
@@ -45,9 +45,6 @@ class MisCochesActivity : AppCompatActivity() {
         addCarButton.setOnClickListener { showAddCarDialog() }
     }
 
-    /**
-     * MODIFICADO: Ahora llama a la API dentro de una Coroutine.
-     */
     private fun showAddCarDialog() {
         val inflater = LayoutInflater.from(this)
         val dialogView = inflater.inflate(R.layout.dialogo_anadir_coche, null)
@@ -76,7 +73,7 @@ class MisCochesActivity : AppCompatActivity() {
             }
         })
 
-        val dialog = AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
             .setTitle("Añadir coche")
             .setView(dialogView)
             .setPositiveButton("Añadir", null) // El listener se pone después de .show()
@@ -91,7 +88,6 @@ class MisCochesActivity : AppCompatActivity() {
             listaSugerencias.adapter = null // Ocultar lista al seleccionar
         }
 
-        // Obtenemos el botón de "Añadir"
         val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
 
         positiveButton.setOnClickListener {
@@ -99,49 +95,50 @@ class MisCochesActivity : AppCompatActivity() {
             val partes = texto.split(" ")
 
             if (partes.size >= 3) {
-                // Deshabilitamos los botones para que el usuario no toque nada
                 positiveButton.isEnabled = false
                 dialog.getButton(AlertDialog.BUTTON_NEGATIVE).isEnabled = false
                 inputBusqueda.isEnabled = false
-                positiveButton.text = "Cargando..." // Feedback visual
+                positiveButton.text = "Cargando..."
 
                 val year = partes.last()
                 val model = partes.drop(1).dropLast(1).joinToString(" ")
                 val brand = partes.first()
 
-                // --- INICIO DE LÓGICA ASÍNCRONA ---
                 CoroutineScope(Dispatchers.Main).launch {
-                    // 1. Llamamos a la API en el hilo de IO
                     val consumption = ApiHelper.getVehicleConsumption(brand, model, year)
 
-                    // 2. Creamos el coche con los datos (o "N/A")
+                    // --- CORRECCIÓN DE UNIDADES ---
+                    // La API devuelve L/100km. Lo convertimos a km/L para consistencia.
+                    val cityL100km = consumption.city.toDoubleOrNull() ?: 0.0
+                    val highwayL100km = consumption.highway.toDoubleOrNull() ?: 0.0
+                    val avgL100km = consumption.avg.toDoubleOrNull() ?: 0.0
+
+                    // Fórmula: km/L = 100 / (L/100km)
+                    val cityKmpl = if (cityL100km > 0) 100.0 / cityL100km else 0.0
+                    val highwayKmpl = if (highwayL100km > 0) 100.0 / highwayL100km else 0.0
+                    val avgKmpl = if (avgL100km > 0) 100.0 / avgL100km else 0.0
+
                     val newCar = Usuario.Car(
                         brand, model, year,
-                        consumption.city,
-                        consumption.highway,
-                        consumption.avg
+                        String.format(Locale.US, "%.1f", cityKmpl),
+                        String.format(Locale.US, "%.1f", highwayKmpl),
+                        String.format(Locale.US, "%.1f", avgKmpl)
                     )
 
-                    // 3. Añadimos a la RAM
                     usuario?.agregarCoche(newCar)
-
-                    // 4. Añadimos a la UI
                     addCarView(newCar)
 
-                    // 5. Guardamos en disco
                     if (usuario != null) {
                         val listaCompleta = LoginActivity.cargarUsuarios(this@MisCochesActivity)
                         val usuarioIndex = listaCompleta.indexOfFirst { it.usuario == usuario!!.usuario }
                         if (usuarioIndex != -1) {
-                            listaCompleta[usuarioIndex] = usuario
+                            listaCompleta[usuarioIndex] = usuario!!
                             LoginActivity.guardarUsuarios(this@MisCochesActivity, listaCompleta)
                         }
                     }
 
-                    // 6. Cerramos el diálogo
                     dialog.dismiss()
                 }
-                // --- FIN DE LÓGICA ASÍNCRONA ---
 
             } else {
                 Toast.makeText(this, "Introduce un coche válido (marca modelo año)", Toast.LENGTH_SHORT).show()
@@ -149,58 +146,46 @@ class MisCochesActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * MODIFICADO: Muestra los datos de consumo.
-     */
     private fun addCarView(car: Usuario.Car) {
         val card = TextView(this)
 
-        // Texto con el consumo
         val carText = "${car.brand} ${car.model} ${car.year}\n" +
                 "Consumo (C/A/P): ${car.cityKmpl} / ${car.highwayKmpl} / ${car.avgKmpl} km/L"
 
         card.text = carText
-        card.textSize = 18f // Un poco más pequeño para que quepan dos líneas
+        card.textSize = 18f
         card.setPadding(30)
         card.setBackgroundResource(R.drawable.rounded_menu)
         card.setTextColor(resources.getColor(android.R.color.white))
 
-        // Ajuste de márgenes
         val params = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply {
-            setMargins(0, 0, 0, 16) // 16dp de margen inferior
+            setMargins(0, 0, 0, 16)
         }
         card.layoutParams = params
 
-        // Click → ir a pantalla mapa
         card.setOnClickListener {
             val intent = Intent(this@MisCochesActivity, MapActivity::class.java)
             intent.putExtra("usuario", usuario)
-            // TODO: Quizás quieras pasar el consumo del coche al MapActivity? (si)
-            // intent.putExtra("car_consumption", car.getAvgKmpl())
+            intent.putExtra("selected_car", car) // Añadido para pasar el coche
             startActivity(intent)
         }
 
-        // Mantener pulsado → eliminar coche
         card.setOnLongClickListener {
             AlertDialog.Builder(this)
                 .setTitle("Eliminar coche")
-                // Mensaje modificado
                 .setMessage("¿Quieres eliminar ${car.brand} ${car.model} (${car.avgKmpl} km/L)?")
                 .setPositiveButton("Eliminar") { _, _ ->
-                    // 1. Elimina de la RAM
                     usuario?.eliminarCoche(car)
-                    // 2. Elimina de la UI
                     carsContainer.removeView(card)
 
-                    // 3. Guarda el cambio
                     if (usuario != null) {
                         val listaCompleta = LoginActivity.cargarUsuarios(this)
                         val usuarioIndex = listaCompleta.indexOfFirst { it.usuario == usuario!!.usuario }
                         if (usuarioIndex != -1) {
-                            listaCompleta[usuarioIndex] = usuario
+                            listaCompleta[usuarioIndex] = usuario!!
                             LoginActivity.guardarUsuarios(this, listaCompleta)
                         }
                     }
@@ -213,11 +198,8 @@ class MisCochesActivity : AppCompatActivity() {
         carsContainer.addView(card)
     }
 
-    /**
-     * MODIFICADO: Limpia la vista antes de recargar.
-     */
     private fun loadCarsFromUser() {
-        carsContainer.removeAllViews() // Evita duplicados al volver a esta pantalla
+        carsContainer.removeAllViews()
         usuario?.getCoches()?.forEach { car ->
             addCarView(car)
         }
