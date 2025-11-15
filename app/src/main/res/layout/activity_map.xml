@@ -146,13 +146,16 @@
             android:id="@+id/btn_locate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Locate" />
+            android:text="Locate"
+            android:textColor="#000000" />
 
         <Button
             android:id="@+id/btn_clear"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Clear" />
+            android:text="Clear"
+            android:textColor="#000000" />
+
     </LinearLayout>
 
 </RelativeLayout>

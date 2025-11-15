@@ -58,10 +58,9 @@ class MapActivity : AppCompatActivity() {
     private val routePolylines = mutableListOf<Polyline>()
     private val routesData = mutableListOf<JSONObject>()
 
-    // --- NUEVAS VARIABLES DE CONSUMO ---
-    private var consumptionCityKmpl: Double = 10.0  // Consumo en ciudad (km/L) - Valor por defecto
-    private var consumptionHighwayKmpl: Double = 14.2 // Consumo en autovía (km/L) - Valor por defecto
-    // --- FIN DE VARIABLES ---
+    // --- VARIABLES DE CONSUMO (km/L) ---
+    private var consumptionCityKmpl: Double = 10.0  // Consumo en ciudad (km/L) - valor por defecto
+    private var consumptionHighwayKmpl: Double = 14.2 // Consumo en autovía (km/L) - valor por defecto
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -82,14 +81,13 @@ class MapActivity : AppCompatActivity() {
 
         val usuario = intent.getSerializableExtra("usuario") as? Usuario
 
-        // --- NUEVO: RECUPERAR DATOS DEL COCHE ---
+        // RECUPERAR DATOS DEL COCHE SELECCIONADO (si existe)
         val selectedCar = intent.getSerializableExtra("selected_car") as? Usuario.Car
         selectedCar?.let {
-            // Convierte a Double. Si es "N/A" o inválido, se mantiene el valor por defecto.
-            it.cityKmpl.toDoubleOrNull()?.let { city -> consumptionCityKmpl = city }
-            it.highwayKmpl.toDoubleOrNull()?.let { highway -> consumptionHighwayKmpl = highway }
+            it.cityKmpl.replace(",", ".").toDoubleOrNull()?.let { v -> consumptionCityKmpl = v }
+            it.highwayKmpl.replace(",", ".").toDoubleOrNull()?.let { v -> consumptionHighwayKmpl = v }
+
         }
-        // --- FIN DEL CÓDIGO NUEVO ---
 
         val btnBack = findViewById<ImageButton>(R.id.btn_back)
         btnBack.setOnClickListener {
@@ -119,16 +117,44 @@ class MapActivity : AppCompatActivity() {
         btnClear.setOnClickListener { clearAll() }
 
         originInput.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) { clearOrigin.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE }
+            private val runnable = Runnable {
+                if (!blockTextWatcher) {
+                    val q = originInput.text.toString().trim()
+                    if (q.length >= 3)
+                        searchNominatim(q) { setOriginFromSuggestion(it) }
+                    else
+                        suggestions.visibility = View.GONE
+                }
+            }
+
+            override fun afterTextChanged(s: Editable?) {
+                originInput.removeCallbacks(runnable)
+                originInput.postDelayed(runnable, 400)
+            }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
+
         destInput.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) { clearDest.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE }
+            private val runnable = Runnable {
+                if (!blockTextWatcher) {
+                    val q = destInput.text.toString().trim()
+                    if (q.length >= 3)
+                        searchNominatim(q) { setDestFromSuggestion(it) }
+                    else
+                        suggestions.visibility = View.GONE
+                }
+            }
+
+            override fun afterTextChanged(s: Editable?) {
+                destInput.removeCallbacks(runnable)
+                destInput.postDelayed(runnable, 400)
+            }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
+
 
         clearOrigin.setOnClickListener {
             originInput.setText("")
@@ -176,22 +202,9 @@ class MapActivity : AppCompatActivity() {
         }
         map.overlays.add(MapEventsOverlay(mapEventsReceiver))
 
-        suggestions.setOnItemClickListener { _, _, position, _ ->
-            val item = suggestions.adapter.getItem(position) as JSONObject
-            setDestFromSuggestion(item)
-        }
 
-        destInput.addTextChangedListener(object : TextWatcher {
-            private val runnable = Runnable {
-                if (!blockTextWatcher) {
-                    val q = destInput.text.toString().trim()
-                    if (q.length >= 3) searchNominatim(q) else suggestions.visibility = View.GONE
-                }
-            }
-            override fun afterTextChanged(s: Editable?) { destInput.removeCallbacks(runnable); destInput.postDelayed(runnable, 400) }
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-        })
+
+
 
         destInput.setOnEditorActionListener { _, _, _ ->
             suggestions.visibility = View.GONE
@@ -207,21 +220,45 @@ class MapActivity : AppCompatActivity() {
     }
 
     private fun setDestFromSuggestion(item: JSONObject) {
+        suggestions.visibility = View.GONE
+
         val lat = item.optDouble("lat")
         val lon = item.optDouble("lon")
+
         setDest(GeoPoint(lat, lon))
-        suggestions.visibility = View.GONE
+
         blockTextWatcher = true
         destInput.setText(item.optString("display_name"))
-        destInput.clearFocus()
-        hideKeyboard(destInput)
         blockTextWatcher = false
+
+        hideKeyboard(destInput)
+        destInput.clearFocus()
+
         hint.text = "Destino establecido. Calculando rutas..."
         requestRoutes()
     }
 
+
     override fun onResume() { super.onResume(); map.onResume() }
     override fun onPause() { super.onPause(); map.onPause() }
+
+    private fun setOriginFromSuggestion(item: JSONObject) {
+        val lat = item.optDouble("lat")
+        val lon = item.optDouble("lon")
+
+        setOrigin(GeoPoint(lat, lon))
+
+        blockTextWatcher = true
+        originInput.setText(item.optString("display_name"))
+        blockTextWatcher = false
+
+        suggestions.visibility = View.GONE
+        hideKeyboard(originInput)
+        originInput.clearFocus()
+
+        clearRoutes()
+        if (dest != null) requestRoutes()
+    }
 
     private fun locateAndSetOrigin() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -285,28 +322,49 @@ class MapActivity : AppCompatActivity() {
         map.invalidate()
     }
 
-    private fun searchNominatim(q: String) {
+    private fun searchNominatim(q: String, onItemSelected: (JSONObject) -> Unit) {
         val url = "https://nominatim.openstreetmap.org/search?format=jsonv2&q=${Uri.encode(q)}&addressdetails=1&limit=6"
-        val req = Request.Builder().url(url).header("Accept-Language", "es").header("User-Agent", packageName).build()
+        val req = Request.Builder()
+            .url(url)
+            .header("Accept-Language", "es")
+            .header("User-Agent", packageName)
+            .build()
+
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {}
+
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     if (!it.isSuccessful) return
-                    val items = (JSONArray(it.body?.string() ?: "[]")).let { 0.until(it.length()).map { i -> it.getJSONObject(i) } }
+
+                    val json = JSONArray(it.body?.string() ?: "[]")
+                    val items = (0 until json.length()).map { i -> json.getJSONObject(i) }
+
                     runOnUiThread {
-                        val adapter = object : ArrayAdapter<JSONObject>(this@MapActivity, android.R.layout.simple_list_item_1, items) {
-                            override fun getView(pos: Int, view: View?, parent: ViewGroup) = (super.getView(pos, view, parent) as TextView).apply {
-                                text = getItem(pos)?.optString("display_name") ?: ""
+                        val adapter = object : ArrayAdapter<JSONObject>(
+                            this@MapActivity,
+                            android.R.layout.simple_list_item_1,
+                            items
+                        ) {
+                            override fun getView(pos: Int, view: View?, parent: ViewGroup): View {
+                                val tv = super.getView(pos, view, parent) as TextView
+                                tv.text = getItem(pos)?.optString("display_name") ?: ""
+                                return tv
                             }
                         }
+
                         suggestions.adapter = adapter
                         suggestions.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
+
+                        suggestions.setOnItemClickListener { _, _, pos, _ ->
+                            onItemSelected(items[pos])
+                        }
                     }
                 }
             }
         })
     }
+
 
     private fun reverseSearchNominatim(gp: GeoPoint, isOrigin: Boolean) {
         val url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${gp.latitude}&lon=${gp.longitude}"
@@ -332,7 +390,8 @@ class MapActivity : AppCompatActivity() {
         val d = dest ?: return
         clearRoutes()
         val coords = "${o.longitude},${o.latitude};${d.longitude},${d.latitude}"
-        val url = "https://router.project-osrm.org/route/v1/driving/$coords?alternatives=true&overview=full&geometries=geojson"
+        // IMPORTANT: pedimos steps=true para poder analizar cada segmento (distance/duration por step)
+        val url = "https://router.project-osrm.org/route/v1/driving/$coords?alternatives=true&overview=full&geometries=geojson&steps=true"
         val req = Request.Builder().url(url).header("User-Agent", packageName).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) { runOnUiThread { hint.text = "Error calculando rutas: ${e.message}" } }
@@ -353,27 +412,69 @@ class MapActivity : AppCompatActivity() {
         })
     }
 
-    // --- NUEVO: MÉTODO PARA CALCULAR CONSUMO ---
-    private fun calculateConsumption(distanceMeters: Double, durationSeconds: Double): Double {
-        if (durationSeconds <= 0 || (consumptionCityKmpl <= 0 && consumptionHighwayKmpl <= 0)) {
-            return 0.0
-        }
+    /**
+     * Calcula consumo en litros usando distancias clasificadas en ciudad/autovía
+     * a partir de los steps del JSON de OSRM.
+     *
+     * Heurística: para cada step calculamos su velocidad media (km/h).
+     * Si speed >= HIGHWAY_SPEED_THRESHOLD -> lo consideramos autovía,
+     * si speed < HIGHWAY_SPEED_THRESHOLD -> urbano.
+     */
+    private fun calculateConsumptionForRoute(route: JSONObject): Double {
+        // Umbral para considerar "autovía" en km/h
+        val HIGHWAY_SPEED_THRESHOLD = 75.0
 
-        val speedKph = (distanceMeters / 1000.0) / (durationSeconds / 3600.0)
+        var cityMeters = 0.0
+        var highwayMeters = 0.0
 
-        // Si la velocidad es > 60km/h, usamos consumo de autovía, sino de ciudad.
-        val kmpl = if (speedKph > 60 && consumptionHighwayKmpl > 0) {
-            consumptionHighwayKmpl
-        } else if (consumptionCityKmpl > 0) {
-            consumptionCityKmpl
+        // Intentamos obtener legs -> steps
+        val legs = route.optJSONArray("legs")
+        if (legs != null && legs.length() > 0) {
+            for (i in 0 until legs.length()) {
+                val leg = legs.getJSONObject(i)
+                val steps = leg.optJSONArray("steps")
+                if (steps != null && steps.length() > 0) {
+                    for (j in 0 until steps.length()) {
+                        val step = steps.getJSONObject(j)
+                        val stepDist = step.optDouble("distance", 0.0) // metros
+                        val stepDur = step.optDouble("duration", 0.0) // segundos
+
+                        val speedKph = if (stepDur > 0) {
+                            val km = stepDist / 1000.0
+                            val hours = stepDur / 3600.0
+                            if (hours > 0) km / hours else 0.0
+                        } else 0.0
+
+                        if (speedKph >= HIGHWAY_SPEED_THRESHOLD) highwayMeters += stepDist else cityMeters += stepDist
+                    }
+                } else {
+                    // Fallback: si no hay steps, repartir por velocidad media del leg
+                    val legDist = leg.optDouble("distance", 0.0)
+                    val legDur = leg.optDouble("duration", 0.0)
+                    val legSpeedKph = if (legDur > 0) (legDist / 1000.0) / (legDur / 3600.0) else 0.0
+                    if (legSpeedKph >= HIGHWAY_SPEED_THRESHOLD) highwayMeters += legDist else cityMeters += legDist
+                }
+            }
         } else {
-            consumptionHighwayKmpl // Fallback por si el de ciudad es 0
+            // Si no hay legs, usar distancia/duration global como fallback
+            val totalDist = route.optDouble("distance", 0.0)
+            val totalDur = route.optDouble("duration", 0.0)
+            val avgSpeedKph = if (totalDur > 0) (totalDist / 1000.0) / (totalDur / 3600.0) else 0.0
+            if (avgSpeedKph >= HIGHWAY_SPEED_THRESHOLD) highwayMeters += totalDist else cityMeters += totalDist
         }
 
-        // Consumo en Litros = (distancia en km) / (km por Litro)
-        return (distanceMeters / 1000.0) / kmpl
+        val cityKm = cityMeters / 1000.0
+        val highwayKm = highwayMeters / 1000.0
+
+        // Evitar division por cero; si valores de consumo invalidos usamos fallback (promedio)
+        val cityKmplSafe = if (consumptionCityKmpl > 0) consumptionCityKmpl else (consumptionHighwayKmpl.takeIf { it > 0 } ?: 10.0)
+        val highwayKmplSafe = if (consumptionHighwayKmpl > 0) consumptionHighwayKmpl else (consumptionCityKmpl.takeIf { it > 0 } ?: 10.0)
+
+        val litersCity = if (cityKmplSafe > 0) cityKm / cityKmplSafe else 0.0
+        val litersHighway = if (highwayKmplSafe > 0) highwayKm / highwayKmplSafe else 0.0
+
+        return litersCity + litersHighway
     }
-    // --- FIN DEL MÉTODO ---
 
     private fun drawRoutes() {
         routePolylines.forEach { map.overlays.remove(it) }
@@ -407,8 +508,9 @@ class MapActivity : AppCompatActivity() {
             val dist = r.optDouble("distance", 0.0)
             val dur = r.optDouble("duration", 0.0)
 
-            // --- MODIFICADO: USA EL NUEVO MÉTODO DE CÁLCULO ---
-            val consumoLitros = calculateConsumption(dist, dur)
+            // NUEVO: calculo por segmentos (ciudad/autovía)
+            val consumoLitros = calculateConsumptionForRoute(r)
+
             routeInfoList.add(RouteInfo("Ruta ${i + 1}", "${formatDistance(dist)} · ${formatDuration(dur)} · %.2f L".format(consumoLitros), poly.color))
         }
 
@@ -432,6 +534,10 @@ class MapActivity : AppCompatActivity() {
     private fun openRouteInGoogleMaps(index: Int) {
         val o = origin ?: return
         val d = dest ?: return
+
+        // Abrimos Google Maps con origen y destino.
+        // Nota: para preservar una ruta alternativa exacta habría que construir waypoints;
+        // aquí abrimos la ruta origen->destino (Google recalculará su propia mejor ruta).
         val url = "https://www.google.com/maps/dir/?api=1&origin=${o.latitude},${o.longitude}&destination=${d.latitude},${d.longitude}&travelmode=driving"
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }

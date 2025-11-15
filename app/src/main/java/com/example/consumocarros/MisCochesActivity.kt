@@ -108,12 +108,11 @@ class MisCochesActivity : AppCompatActivity() {
                     val consumption = ApiHelper.getVehicleConsumption(brand, model, year)
 
                     // --- CORRECCIÓN DE UNIDADES ---
-                    // La API devuelve L/100km. Lo convertimos a km/L para consistencia.
+                    // La API devuelve L/100km. Lo convertimos a km/L.
                     val cityL100km = consumption.city.toDoubleOrNull() ?: 0.0
                     val highwayL100km = consumption.highway.toDoubleOrNull() ?: 0.0
                     val avgL100km = consumption.avg.toDoubleOrNull() ?: 0.0
 
-                    // Fórmula: km/L = 100 / (L/100km)
                     val cityKmpl = if (cityL100km > 0) 100.0 / cityL100km else 0.0
                     val highwayKmpl = if (highwayL100km > 0) 100.0 / highwayL100km else 0.0
                     val avgKmpl = if (avgL100km > 0) 100.0 / avgL100km else 0.0
@@ -169,7 +168,7 @@ class MisCochesActivity : AppCompatActivity() {
         card.setOnClickListener {
             val intent = Intent(this@MisCochesActivity, MapActivity::class.java)
             intent.putExtra("usuario", usuario)
-            intent.putExtra("selected_car", car) // Añadido para pasar el coche
+            intent.putExtra("selected_car", car) // Pasamos el coche seleccionado
             startActivity(intent)
         }
 
@@ -200,8 +199,6 @@ class MisCochesActivity : AppCompatActivity() {
 
     private fun loadCarsFromUser() {
         carsContainer.removeAllViews()
-        usuario?.getCoches()?.forEach { car ->
-            addCarView(car)
-        }
+        usuario?.getCoches()?.forEach { car -> addCarView(car) }
     }
 }
