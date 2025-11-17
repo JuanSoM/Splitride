@@ -7,48 +7,93 @@ import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.List;
+
 public class DepositoActivity extends AppCompatActivity {
 
     private Usuario usuarioconectado;
-    private int capacidad;
     private int llenado; // porcentaje actual
     private Usuario.Car cocheseleccionado;
     private CircularStateView circle;
     private TextView textoporcentaje;
+    private SaveManager saveManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_deposito);
 
+        // Instanciar SaveManager una sola vez
+        saveManager = new SaveManager(this);
+
         // Referencias UI
         circle = findViewById(R.id.circleState);
         textoporcentaje = findViewById(R.id.textViewporcentaje);
-
         Button boton_llenado = findViewById(R.id.button_full);
         ImageButton logoButton = findViewById(R.id.logoButton);
         ImageButton homeButton = findViewById(R.id.homeButton);
+        Spinner spinnercoches = findViewById(R.id.spinnercoches);
 
         // Usuario conectado
         usuarioconectado = (Usuario) getIntent().getSerializableExtra("usuario");
         cocheseleccionado = cochepordefecto();
 
-        // Botón logo
+        if (usuarioconectado != null && usuarioconectado.getCoches() != null) {
+            List<Usuario.Car> listaCoches = usuarioconectado.getCoches();
+
+            ArrayAdapter<Usuario.Car> adapter = new ArrayAdapter<>(this,
+                    android.R.layout.simple_spinner_item, listaCoches);
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnercoches.setAdapter(adapter);
+
+            // Seleccionar el coche por defecto
+            int indicePorDefecto = 0;
+            for (int i = 0; i < listaCoches.size(); i++) {
+                if (listaCoches.get(i).equals(cocheseleccionado)) {
+                    indicePorDefecto = i;
+                    break;
+                }
+            }
+            spinnercoches.setSelection(indicePorDefecto);
+
+            spinnercoches.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    cocheseleccionado = listaCoches.get(position);
+
+                    // Si capacidad no está definida, pedirla
+                    if (cocheseleccionado.getcapacidaddeposito() == -1) {
+                        pedirCapacidad(cocheseleccionado);
+                    } else {
+                        llenado = cocheseleccionado.getCapacidadactual();
+                        animarCircularYTexto(0, llenado);
+                    }
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        }
+
+        // Botón logo -> MisCochesActivity
         logoButton.setOnClickListener(view -> {
             Intent intent = new Intent(DepositoActivity.this, MisCochesActivity.class);
             intent.putExtra("usuario", usuarioconectado);
             startActivity(intent);
         });
 
-        // Botón Home
+        // Botón Home -> MainActivity
         homeButton.setOnClickListener(view -> {
             Intent intent = new Intent(DepositoActivity.this, MainActivity.class);
             intent.putExtra("usuario", usuarioconectado);
@@ -60,16 +105,12 @@ public class DepositoActivity extends AppCompatActivity {
             int anterior = llenado;
             llenado = 100;
             cocheseleccionado.setCapacidadactual(llenado);
+
+            // Guardar cambios
+            saveManager.actualizarUsuario(usuarioconectado);
+
             animarCircularYTexto(anterior, llenado);
         });
-
-        // Coche por defecto
-
-        if (cocheseleccionado != null && cocheseleccionado.getcapacidaddeposito() == -1) {
-            pedirCapacidad(cocheseleccionado);
-        }else{
-            llenado = cocheseleccionado.getCapacidadactual();
-        }
 
         // Animación inicial
         animarCircularYTexto(0, llenado);
@@ -109,8 +150,18 @@ public class DepositoActivity extends AppCompatActivity {
             String valor = input.getText().toString();
             if (!valor.isEmpty()) {
                 int capacidadIngresada = Integer.parseInt(valor);
-                coche.setCapacidaddeposito(capacidadIngresada);
-                capacidad = capacidadIngresada;
+                cocheseleccionado.setCapacidaddeposito(capacidadIngresada);
+
+                if (cocheseleccionado.getCapacidadactual() == -1) {
+                    cocheseleccionado.setCapacidadactual(0);
+                    llenado = 0;
+                } else {
+                    llenado = cocheseleccionado.getCapacidadactual();
+                }
+
+                // Guardar cambios
+                saveManager.actualizarUsuario(usuarioconectado);
+
                 dialog.dismiss();
                 pedirPorcentaje();
             }
@@ -148,6 +199,11 @@ public class DepositoActivity extends AppCompatActivity {
 
                 int anterior = llenado;
                 llenado = porcentaje;
+                cocheseleccionado.setCapacidadactual(llenado);
+
+                // Guardar cambios
+                saveManager.actualizarUsuario(usuarioconectado);
+
                 animarCircularYTexto(anterior, llenado);
                 dialog.dismiss();
             }
@@ -161,14 +217,8 @@ public class DepositoActivity extends AppCompatActivity {
 
         animator.addUpdateListener(animation -> {
             int valor = (int) animation.getAnimatedValue();
-
-            // Actualizar círculo
             circle.setState(valor, false); // false: animación interna desactivada
-
-            // Calcular color interpolado rojo-verde
             int color = interpolateColor(Color.RED, Color.GREEN, valor / 100f);
-
-            // Actualizar TextView
             textoporcentaje.setText(valor + "%");
             textoporcentaje.setTextColor(color);
         });

@@ -1,6 +1,8 @@
 package com.example.consumocarros;
 
 import java.io.Serializable;
+import java.math.BigInteger;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,6 +14,9 @@ public class Usuario implements Serializable {
     public String apellidos;
     public List<Car> coches; // lista de coches del usuario
     public Car cochemasusado;
+    private String idUsuario;
+    private static SecureRandom random = new SecureRandom();
+
 
     public Usuario(String contrasena, String usuario, String nombre, String apellidos) {
         this.contrasena = contrasena;
@@ -19,8 +24,16 @@ public class Usuario implements Serializable {
         this.nombre = nombre;
         this.apellidos = apellidos;
         this.coches = new ArrayList<>();
+        this.idUsuario = this.generarIDUsuario();
     }
 
+    public String getIdUsuario() {
+        return idUsuario;
+    }
+
+    private String generarIDUsuario() {
+        return new BigInteger(130, random).toString(32);
+    }
     public String getContrasena() { return contrasena; }
     public void setContrasena(String contrasena) { this.contrasena = contrasena; }
 

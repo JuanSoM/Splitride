@@ -17,10 +17,13 @@ class MisCochesActivity : AppCompatActivity() {
 
     private lateinit var carsContainer: LinearLayout
     private var usuario: Usuario? = null
+    private lateinit var saveManager: SaveManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.mis_coches)
+
+        saveManager = SaveManager(this) // Inicializar SaveManager
 
         usuario = intent.getSerializableExtra("usuario") as? Usuario
 
@@ -29,10 +32,8 @@ class MisCochesActivity : AppCompatActivity() {
         val addCarButton = findViewById<Button>(R.id.botonAnadir)
         carsContainer = findViewById(R.id.contenedorCoches)
 
-        // Cargar coches del usuario
         loadCarsFromUser()
 
-        // Toolbar
         logoButton.setOnClickListener { /* sin acción */ }
 
         homeButton.setOnClickListener {
@@ -73,7 +74,6 @@ class MisCochesActivity : AppCompatActivity() {
             }
         })
 
-        // Crear el AlertDialog con tema base
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .setPositiveButton("Añadir", null)
@@ -81,23 +81,16 @@ class MisCochesActivity : AppCompatActivity() {
             .create()
 
         dialog.show()
-
-        // --- Aplicar fondo redondeado negro ---
         dialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
-
-        // --- Título personalizado en blanco ---
         val titleView = TextView(this)
         titleView.text = "Añadir coche"
         titleView.setTextColor(android.graphics.Color.WHITE)
         titleView.textSize = 18f
         titleView.setPadding(24)
         dialog.setCustomTitle(titleView)
-
-        // --- Botones blancos ---
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(android.graphics.Color.WHITE)
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(android.graphics.Color.WHITE)
 
-        // Selección de sugerencias
         listaSugerencias.setOnItemClickListener { _, _, position, _ ->
             val seleccion = adapter.getItem(position)
             inputBusqueda.setText(seleccion)
@@ -140,14 +133,8 @@ class MisCochesActivity : AppCompatActivity() {
                     usuario?.agregarCoche(newCar)
                     addCarView(newCar)
 
-                    if (usuario != null) {
-                        val listaCompleta = LoginActivity.cargarUsuarios(this@MisCochesActivity)
-                        val usuarioIndex = listaCompleta.indexOfFirst { it.usuario == usuario!!.usuario }
-                        if (usuarioIndex != -1) {
-                            listaCompleta[usuarioIndex] = usuario!!
-                            LoginActivity.guardarUsuarios(this@MisCochesActivity, listaCompleta)
-                        }
-                    }
+                    // Guardar usuario actualizado usando SaveManager
+                    usuario?.let { saveManager.actualizarUsuario(it) }
 
                     dialog.dismiss()
                 }
@@ -157,7 +144,6 @@ class MisCochesActivity : AppCompatActivity() {
             }
         }
     }
-
 
     private fun addCarView(car: Usuario.Car) {
         val card = TextView(this)
@@ -174,59 +160,41 @@ class MisCochesActivity : AppCompatActivity() {
         val params = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply {
-            setMargins(0, 0, 0, 16)
-        }
+        ).apply { setMargins(0, 0, 0, 16) }
         card.layoutParams = params
 
         card.setOnClickListener {
-            usuario?.aumentaruso(car);
+            usuario?.aumentaruso(car)
             val intent = Intent(this@MisCochesActivity, MapActivity::class.java)
             intent.putExtra("usuario", usuario)
-            intent.putExtra("selected_car", car) // Pasamos el coche seleccionado
+            intent.putExtra("selected_car", car)
             startActivity(intent)
         }
 
         card.setOnLongClickListener {
-            // Crear el TextView para el mensaje con color blanco
             val messageView = TextView(this)
             messageView.text = "¿Quieres eliminar ${car.brand} ${car.model} (${car.avgKmpl} km/L)?"
             messageView.setTextColor(android.graphics.Color.WHITE)
-            messageView.setPadding(40)  // opcional para dar margen interno
+            messageView.setPadding(40)
             messageView.textSize = 16f
 
             val deleteDialog = AlertDialog.Builder(this)
-                .setView(messageView)  // <-- Usamos el TextView como vista principal
+                .setView(messageView)
                 .setPositiveButton("Eliminar") { _, _ ->
                     usuario?.eliminarCoche(car)
                     carsContainer.removeView(card)
-
-                    if (usuario != null) {
-                        val listaCompleta = LoginActivity.cargarUsuarios(this)
-                        val usuarioIndex = listaCompleta.indexOfFirst { it.usuario == usuario!!.usuario }
-                        if (usuarioIndex != -1) {
-                            listaCompleta[usuarioIndex] = usuario!!
-                            LoginActivity.guardarUsuarios(this, listaCompleta)
-                        }
-                    }
+                    usuario?.let { saveManager.actualizarUsuario(it) } // Guardar cambios
                 }
                 .setNegativeButton("Cancelar", null)
                 .create()
 
-            // Fondo redondeado negro
             deleteDialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
-
-            // Mostrar diálogo
             deleteDialog.show()
-
-            // Botones blancos
             deleteDialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(android.graphics.Color.WHITE)
             deleteDialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(android.graphics.Color.WHITE)
 
             true
         }
-
-
 
         carsContainer.addView(card)
     }
@@ -236,5 +204,3 @@ class MisCochesActivity : AppCompatActivity() {
         usuario?.getCoches()?.forEach { car -> addCarView(car) }
     }
 }
-
-
