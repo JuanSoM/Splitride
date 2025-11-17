@@ -1,5 +1,6 @@
 package com.example.consumocarros
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
@@ -15,7 +16,8 @@ class CircularStateView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private var stateValue: Int = 0   // 0 a 100
+    private var stateValue: Int = 0   // valor actual
+    private var animator: ValueAnimator? = null  // animador activo
 
     private val paint = Paint().apply {
         style = Paint.Style.STROKE
@@ -24,9 +26,35 @@ class CircularStateView @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
     }
 
+    /** Getter opcional */
+    fun getState(): Int = stateValue
+
+    // Para compatibilidad con Java
     fun setState(value: Int) {
-        stateValue = value.coerceIn(0, 100)
-        invalidate()
+        setState(value, true)
+    }
+
+
+    /** ANIMACIÓN automática en cada cambio */
+    fun setState(value: Int, animate: Boolean = true) {
+        val finalValue = value.coerceIn(0, 100)
+
+        // Cancelar animación previa si existe
+        animator?.cancel()
+
+        if (animate) {
+            animator = ValueAnimator.ofInt(stateValue, finalValue).apply {
+                duration = 800
+                addUpdateListener {
+                    stateValue = it.animatedValue as Int
+                    invalidate()
+                }
+                start()
+            }
+        } else {
+            stateValue = finalValue
+            invalidate()
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -45,14 +73,13 @@ class CircularStateView @JvmOverloads constructor(
             centerY + radius
         )
 
-        // Convertir progreso a ángulo (360°)
+        // Convertir progreso a ángulo
         val sweepAngle = (stateValue / 100f) * 360f
 
         // Color interpolado entre rojo y verde
         val color = interpolateColor(Color.RED, Color.GREEN, stateValue / 100f)
         paint.color = color
 
-        // Dibujar arco
         canvas.drawArc(rect, -90f, sweepAngle, false, paint)
     }
 

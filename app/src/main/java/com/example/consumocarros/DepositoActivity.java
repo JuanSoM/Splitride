@@ -1,5 +1,6 @@
 package com.example.consumocarros;
 
+import android.animation.ValueAnimator;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -16,151 +17,170 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class DepositoActivity extends AppCompatActivity {
 
-    Usuario usuarioconectado;
-    int capacidad;
-    int llenado;//en porcentaje
+    private Usuario usuarioconectado;
+    private int capacidad;
+    private int llenado; // porcentaje actual
+    private Usuario.Car cocheseleccionado;
+    private CircularStateView circle;
+    private TextView textoporcentaje;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_deposito);
+
+        // Referencias UI
+        circle = findViewById(R.id.circleState);
+        textoporcentaje = findViewById(R.id.textViewporcentaje);
+
         Button boton_llenado = findViewById(R.id.button_full);
         ImageButton logoButton = findViewById(R.id.logoButton);
         ImageButton homeButton = findViewById(R.id.homeButton);
 
-
-
-        // Acción del botón del logo
-        logoButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(DepositoActivity.this, MisCochesActivity.class);
-                intent.putExtra("usuario", usuarioconectado);
-                startActivity(intent);
-            }
-        });
-
-        // Acción del botón Home
-        homeButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(DepositoActivity.this, MainActivity.class);
-                intent.putExtra("usuario", usuarioconectado);
-                startActivity(intent);
-            }
-        });
-
-        boton_llenado.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                llenado = 100;
-                actualizarimagen();
-
-            }
-        });
-
+        // Usuario conectado
         usuarioconectado = (Usuario) getIntent().getSerializableExtra("usuario");
-        Usuario.Car cochepordefecto = cochepordefceto();
-        if(cochepordefecto.getcapacidaddeposito() == -1){
-            pedirCapacidad(cochepordefecto);
+        cocheseleccionado = cochepordefecto();
+
+        // Botón logo
+        logoButton.setOnClickListener(view -> {
+            Intent intent = new Intent(DepositoActivity.this, MisCochesActivity.class);
+            intent.putExtra("usuario", usuarioconectado);
+            startActivity(intent);
+        });
+
+        // Botón Home
+        homeButton.setOnClickListener(view -> {
+            Intent intent = new Intent(DepositoActivity.this, MainActivity.class);
+            intent.putExtra("usuario", usuarioconectado);
+            startActivity(intent);
+        });
+
+        // Botón llenar al 100%
+        boton_llenado.setOnClickListener(v -> {
+            int anterior = llenado;
+            llenado = 100;
+            cocheseleccionado.setCapacidadactual(llenado);
+            animarCircularYTexto(anterior, llenado);
+        });
+
+        // Coche por defecto
+
+        if (cocheseleccionado != null && cocheseleccionado.getcapacidaddeposito() == -1) {
+            pedirCapacidad(cocheseleccionado);
+        }else{
+            llenado = cocheseleccionado.getCapacidadactual();
         }
-        // Obtener la vista del XML
-        CircularStateView circle = findViewById(R.id.circleState);
 
-        // Valor de prueba: 33
-        circle.setState(llenado);
+        // Animación inicial
+        animarCircularYTexto(0, llenado);
     }
 
-    public Usuario.Car cochepordefceto(){
-        return usuarioconectado.cochemasusado();
+    // Obtener coche más usado
+    private Usuario.Car cochepordefecto() {
+        if (usuarioconectado != null) {
+            return usuarioconectado.cochemasusado();
+        }
+        return null;
     }
 
+    // Pedir capacidad del depósito
     private void pedirCapacidad(Usuario.Car coche) {
-
-        // Inflar diseño personalizado
-        android.view.View view = getLayoutInflater().inflate(R.layout.dialog_input, null);
-
+        View view = getLayoutInflater().inflate(R.layout.dialog_input, null);
         TextView title = view.findViewById(R.id.dialogTitle);
         EditText input = view.findViewById(R.id.dialogInput);
 
         SpannableString spannableTitle = new SpannableString("Introduce la capacidad del depósito (L)");
         spannableTitle.setSpan(new ForegroundColorSpan(Color.WHITE), 0, spannableTitle.length(), 0);
-
         title.setText(spannableTitle);
-
-
         input.setHint("Capacidad en litros");
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(view)
-                .setPositiveButton("Guardar", (d, w) -> {
-                    String valor = input.getText().toString();
-                    if (!valor.isEmpty()) {
-                        int capacidadIngresada = Integer.parseInt(valor);
-
-                        coche.setCapacidaddeposito(capacidadIngresada);
-                        capacidad = capacidadIngresada;
-
-                        pedirPorcentaje();
-                    }
-                })
+                .setPositiveButton("Guardar", null)
                 .setNegativeButton("Cancelar", (d, w) -> d.dismiss())
                 .create();
 
         dialog.show();
-
-        // botones negros
         dialog.getWindow().setBackgroundDrawableResource(R.drawable.dialog_background);
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(getColor(android.R.color.white));
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(getColor(android.R.color.white));
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String valor = input.getText().toString();
+            if (!valor.isEmpty()) {
+                int capacidadIngresada = Integer.parseInt(valor);
+                coche.setCapacidaddeposito(capacidadIngresada);
+                capacidad = capacidadIngresada;
+                dialog.dismiss();
+                pedirPorcentaje();
+            }
+        });
     }
 
+    // Pedir porcentaje actual
     private void pedirPorcentaje() {
-
-        // Inflar layout personalizado
-        android.view.View view = getLayoutInflater().inflate(R.layout.dialog_input, null);
-
+        View view = getLayoutInflater().inflate(R.layout.dialog_input, null);
         TextView title = view.findViewById(R.id.dialogTitle);
         EditText input = view.findViewById(R.id.dialogInput);
 
-        // Asignar título en blanco usando SpannableString
         SpannableString spannableTitle = new SpannableString("Porcentaje actual del depósito (%)");
         spannableTitle.setSpan(new ForegroundColorSpan(Color.WHITE), 0, spannableTitle.length(), 0);
         title.setText(spannableTitle);
-
-        // Placeholder del input
         input.setHint("0 - 100%");
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(view)
-                .setPositiveButton("Aceptar", (d, w) -> {
-                    String texto = input.getText().toString();
-                    if (!texto.isEmpty()) {
-                        int porcentaje = Integer.parseInt(texto);
-                        llenado = porcentaje;
-                        CircularStateView circle = findViewById(R.id.circleState);
-                        circle.setState(porcentaje);
-                    }
-                })
+                .setPositiveButton("Aceptar", null)
                 .setNegativeButton("Cancelar", (d, w) -> d.dismiss())
                 .create();
 
         dialog.show();
-
-        // Fondo redondeado negro
         dialog.getWindow().setBackgroundDrawableResource(R.drawable.dialog_background);
-
-        // Botones blancos
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(getColor(android.R.color.white));
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(getColor(android.R.color.white));
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String texto = input.getText().toString();
+            if (!texto.isEmpty()) {
+                int porcentaje = Integer.parseInt(texto);
+                if (porcentaje < 0) porcentaje = 0;
+                if (porcentaje > 100) porcentaje = 100;
+
+                int anterior = llenado;
+                llenado = porcentaje;
+                animarCircularYTexto(anterior, llenado);
+                dialog.dismiss();
+            }
+        });
     }
 
-    private void actualizarimagen(){
-        CircularStateView circle = findViewById(R.id.circleState);
+    // Animación sincronizada de círculo y TextView
+    private void animarCircularYTexto(int inicio, int fin) {
+        ValueAnimator animator = ValueAnimator.ofInt(inicio, fin);
+        animator.setDuration(800);
 
-        // Valor de prueba: 33
-        circle.setState(llenado);
+        animator.addUpdateListener(animation -> {
+            int valor = (int) animation.getAnimatedValue();
+
+            // Actualizar círculo
+            circle.setState(valor, false); // false: animación interna desactivada
+
+            // Calcular color interpolado rojo-verde
+            int color = interpolateColor(Color.RED, Color.GREEN, valor / 100f);
+
+            // Actualizar TextView
+            textoporcentaje.setText(valor + "%");
+            textoporcentaje.setTextColor(color);
+        });
+
+        animator.start();
     }
 
-
-
+    // Interpolación de color
+    private int interpolateColor(int start, int end, float fraction) {
+        int r = Color.red(start) + Math.round((Color.red(end) - Color.red(start)) * fraction);
+        int g = Color.green(start) + Math.round((Color.green(end) - Color.green(start)) * fraction);
+        int b = Color.blue(start) + Math.round((Color.blue(end) - Color.blue(start)) * fraction);
+        return Color.rgb(r, g, b);
+    }
 }

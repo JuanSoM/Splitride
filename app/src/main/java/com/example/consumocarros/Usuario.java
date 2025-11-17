@@ -82,6 +82,7 @@ public class Usuario implements Serializable {
         private String highwayKmpl;
         private String avgKmpl;
         private int capacidaddeposito;
+        private int capacidadactual;
         private int vecesusado;
 
         // Constructor modificado
@@ -94,6 +95,15 @@ public class Usuario implements Serializable {
             this.avgKmpl = avgKmpl;
             this.capacidaddeposito = -1;
             this.vecesusado = 0;
+            this.capacidadactual = -1;
+        }
+
+        public int getCapacidadactual() {
+            return capacidadactual;
+        }
+
+        public void setCapacidadactual(int capacidadactual) {
+            this.capacidadactual = capacidadactual;
         }
 
         // Getters antiguos
