@@ -145,18 +145,58 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/botonRide" />
 
-            <Button
+            <!-- BOTÓN COMBUSTIBLE PERSONALIZADO (PREVIEW) -->
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/botoncombustible"
                 android:layout_width="0dp"
                 android:layout_height="225dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/rounded_button"
-                android:text="Combustible"
-                android:textColor="@color/black"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="10dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/button8"
-                app:layout_constraintTop_toBottomOf="@id/botonRide" />
+                app:layout_constraintTop_toBottomOf="@id/botonRide">
+
+                <TextView
+                    android:id="@+id/titleCombustible"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Combustible"
+                    android:textColor="@color/black"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+                <com.example.consumocarros.CircularStateView
+                    android:id="@+id/mainCircleState"
+                    android:layout_width="110dp"
+                    android:layout_height="110dp"
+                    app:layout_constraintTop_toBottomOf="@id/titleCombustible"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintVertical_bias="0.45"/>
+
+                <TextView
+                    android:id="@+id/mainPercentText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="--%"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/black"
+                    app:layout_constraintTop_toTopOf="@id/mainCircleState"
+                    app:layout_constraintBottom_toBottomOf="@id/mainCircleState"
+                    app:layout_constraintStart_toStartOf="@id/mainCircleState"
+                    app:layout_constraintEnd_toEndOf="@id/mainCircleState"/>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+            <!-- FIN BOTÓN PERSONALIZADO -->
 
             <Button
                 android:id="@+id/button3"
