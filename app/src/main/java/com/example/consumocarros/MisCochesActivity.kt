@@ -23,8 +23,7 @@ class MisCochesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.mis_coches)
 
-        saveManager = SaveManager(this) // Inicializar SaveManager
-
+        saveManager = SaveManager(this)
         usuario = intent.getSerializableExtra("usuario") as? Usuario
 
         val logoButton = findViewById<ImageButton>(R.id.logoButton)
@@ -74,22 +73,14 @@ class MisCochesActivity : AppCompatActivity() {
             }
         })
 
-        val dialog = AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle("Añadir coche")
             .setView(dialogView)
             .setPositiveButton("Añadir", null)
             .setNegativeButton("Cancelar", null)
             .create()
 
         dialog.show()
-        dialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
-        val titleView = TextView(this)
-        titleView.text = "Añadir coche"
-        titleView.setTextColor(android.graphics.Color.WHITE)
-        titleView.textSize = 18f
-        titleView.setPadding(24)
-        dialog.setCustomTitle(titleView)
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(android.graphics.Color.WHITE)
-        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(android.graphics.Color.WHITE)
 
         listaSugerencias.setOnItemClickListener { _, _, position, _ ->
             val seleccion = adapter.getItem(position)
@@ -98,6 +89,7 @@ class MisCochesActivity : AppCompatActivity() {
         }
 
         val positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+
         positiveButton.setOnClickListener {
             val texto = inputBusqueda.text.toString().trim()
             val partes = texto.split(" ")
@@ -115,13 +107,11 @@ class MisCochesActivity : AppCompatActivity() {
                 CoroutineScope(Dispatchers.Main).launch {
                     val consumption = ApiHelper.getVehicleConsumption(brand, model, year)
 
-                    val cityL100km = consumption.city.toDoubleOrNull() ?: 0.0
-                    val highwayL100km = consumption.highway.toDoubleOrNull() ?: 0.0
-                    val avgL100km = consumption.avg.toDoubleOrNull() ?: 0.0
-
-                    val cityKmpl = if (cityL100km > 0) 100.0 / cityL100km else 0.0
-                    val highwayKmpl = if (highwayL100km > 0) 100.0 / highwayL100km else 0.0
-                    val avgKmpl = if (avgL100km > 0) 100.0 / avgL100km else 0.0
+                    // --- CORRECCIÓN DEFINITIVA ---
+                    // ApiHelper ya devuelve km/L con punto decimal. Solo parseamos.
+                    val cityKmpl = consumption.city.toDoubleOrNull() ?: 0.0
+                    val highwayKmpl = consumption.highway.toDoubleOrNull() ?: 0.0
+                    val avgKmpl = consumption.avg.toDoubleOrNull() ?: 0.0
 
                     val newCar = Usuario.Car(
                         brand, model, year,
@@ -133,8 +123,9 @@ class MisCochesActivity : AppCompatActivity() {
                     usuario?.agregarCoche(newCar)
                     addCarView(newCar)
 
-                    // Guardar usuario actualizado usando SaveManager
-                    usuario?.let { saveManager.actualizarUsuario(it) }
+                    if (usuario != null) {
+                        saveManager.actualizarUsuario(usuario)
+                    }
 
                     dialog.dismiss()
                 }
@@ -160,11 +151,12 @@ class MisCochesActivity : AppCompatActivity() {
         val params = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
-        ).apply { setMargins(0, 0, 0, 16) }
+        ).apply {
+            setMargins(0, 0, 0, 16)
+        }
         card.layoutParams = params
 
         card.setOnClickListener {
-            usuario?.aumentaruso(car)
             val intent = Intent(this@MisCochesActivity, MapActivity::class.java)
             intent.putExtra("usuario", usuario)
             intent.putExtra("selected_car", car)
@@ -172,27 +164,19 @@ class MisCochesActivity : AppCompatActivity() {
         }
 
         card.setOnLongClickListener {
-            val messageView = TextView(this)
-            messageView.text = "¿Quieres eliminar ${car.brand} ${car.model} (${car.avgKmpl} km/L)?"
-            messageView.setTextColor(android.graphics.Color.WHITE)
-            messageView.setPadding(40)
-            messageView.textSize = 16f
-
-            val deleteDialog = AlertDialog.Builder(this)
-                .setView(messageView)
+            AlertDialog.Builder(this)
+                .setTitle("Eliminar coche")
+                .setMessage("¿Quieres eliminar ${car.brand} ${car.model} (${car.avgKmpl} km/L)?")
                 .setPositiveButton("Eliminar") { _, _ ->
                     usuario?.eliminarCoche(car)
                     carsContainer.removeView(card)
-                    usuario?.let { saveManager.actualizarUsuario(it) } // Guardar cambios
+
+                    if (usuario != null) {
+                        saveManager.actualizarUsuario(usuario)
+                    }
                 }
                 .setNegativeButton("Cancelar", null)
-                .create()
-
-            deleteDialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
-            deleteDialog.show()
-            deleteDialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(android.graphics.Color.WHITE)
-            deleteDialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(android.graphics.Color.WHITE)
-
+                .show()
             true
         }
 
@@ -201,6 +185,8 @@ class MisCochesActivity : AppCompatActivity() {
 
     private fun loadCarsFromUser() {
         carsContainer.removeAllViews()
-        usuario?.getCoches()?.forEach { car -> addCarView(car) }
+        usuario?.getCoches()?.forEach { car ->
+            addCarView(car)
+        }
     }
 }

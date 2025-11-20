@@ -7,6 +7,7 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
 import kotlin.math.round
 
@@ -35,9 +36,9 @@ object ApiHelper {
 
             """
                 Consumo estimado de $make $model $year:
-                - Ciudad: ${"%.2f".format(cityKmpl)} km/L
-                - Autovía: ${"%.2f".format(highwayKmpl)} km/L
-                - Promedio: ${"%.2f".format(avgKmpl)} km/L
+                - Ciudad: ${String.format(Locale.US, "%.2f", cityKmpl)} km/L
+                - Autovía: ${String.format(Locale.US, "%.2f", highwayKmpl)} km/L
+                - Promedio: ${String.format(Locale.US, "%.2f", avgKmpl)} km/L
             """.trimIndent()
 
         } catch (e: Exception) {
@@ -78,9 +79,10 @@ object ApiHelper {
 
             val avgMpg = (cityMpg + highwayMpg) / 2
 
-            val cityKmpl = "%.2f".format(mpgToKmpl(cityMpg))
-            val highwayKmpl = "%.2f".format(mpgToKmpl(highwayMpg))
-            val avgKmpl = "%.2f".format(mpgToKmpl(avgMpg))
+            // USAR LOCALE.US PARA EVITAR COMAS
+            val cityKmpl = String.format(Locale.US, "%.2f", mpgToKmpl(cityMpg))
+            val highwayKmpl = String.format(Locale.US, "%.2f", mpgToKmpl(highwayMpg))
+            val avgKmpl = String.format(Locale.US, "%.2f", mpgToKmpl(avgMpg))
 
             return@withContext ConsumptionData(cityKmpl, highwayKmpl, avgKmpl)
 
