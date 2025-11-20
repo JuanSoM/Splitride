@@ -18,6 +18,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import okhttp3.*
@@ -35,6 +36,8 @@ import org.osmdroid.views.overlay.Polyline
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
 
 data class RouteInfo(val title: String, val details: String, val color: Int)
 
@@ -58,9 +61,13 @@ class MapActivity : AppCompatActivity() {
     private val routePolylines = mutableListOf<Polyline>()
     private val routesData = mutableListOf<JSONObject>()
 
-    // --- VARIABLES DE CONSUMO (km/L) ---
-    private var consumptionCityKmpl: Double = 10.0  // Consumo en ciudad (km/L) - valor por defecto
-    private var consumptionHighwayKmpl: Double = 14.2 // Consumo en autovía (km/L) - valor por defecto
+    // --- VARIABLES DE CONSUMO ---
+    private var consumptionCityKmpl: Double = 10.0
+    private var consumptionHighwayKmpl: Double = 14.2
+    private var usuario: Usuario? = null
+    private var selectedCar: Usuario.Car? = null
+    private lateinit var saveManager: SaveManager
+    // --- FIN DE VARIABLES ---
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -79,15 +86,20 @@ class MapActivity : AppCompatActivity() {
         Configuration.getInstance().load(this, getSharedPreferences("osmdroid", MODE_PRIVATE))
         setContentView(R.layout.activity_map)
 
-        val usuario = intent.getSerializableExtra("usuario") as? Usuario
+        saveManager = SaveManager(this)
 
-        // RECUPERAR DATOS DEL COCHE SELECCIONADO (si existe)
-        val selectedCar = intent.getSerializableExtra("selected_car") as? Usuario.Car
+        usuario = intent.getSerializableExtra("usuario") as? Usuario
+
+        // --- RECUPERAR DATOS DEL COCHE ---
+        selectedCar = intent.getSerializableExtra("selected_car") as? Usuario.Car
         selectedCar?.let {
-            it.cityKmpl.replace(",", ".").toDoubleOrNull()?.let { v -> consumptionCityKmpl = v }
-            it.highwayKmpl.replace(",", ".").toDoubleOrNull()?.let { v -> consumptionHighwayKmpl = v }
-
+            it.cityKmpl.toDoubleOrNull()?.let { city -> consumptionCityKmpl = city }
+            it.highwayKmpl.toDoubleOrNull()?.let { highway -> consumptionHighwayKmpl = highway }
         }
+        
+        // --- NUEVO: VERIFICAR SI FALTAN DATOS DEL DEPÓSITO ---
+        checkCarConfiguration()
+        // --- FIN ---
 
         val btnBack = findViewById<ImageButton>(R.id.btn_back)
         btnBack.setOnClickListener {
@@ -117,44 +129,16 @@ class MapActivity : AppCompatActivity() {
         btnClear.setOnClickListener { clearAll() }
 
         originInput.addTextChangedListener(object : TextWatcher {
-            private val runnable = Runnable {
-                if (!blockTextWatcher) {
-                    val q = originInput.text.toString().trim()
-                    if (q.length >= 3)
-                        searchNominatim(q) { setOriginFromSuggestion(it) }
-                    else
-                        suggestions.visibility = View.GONE
-                }
-            }
-
-            override fun afterTextChanged(s: Editable?) {
-                originInput.removeCallbacks(runnable)
-                originInput.postDelayed(runnable, 400)
-            }
+            override fun afterTextChanged(s: Editable?) { clearOrigin.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
-
 
         destInput.addTextChangedListener(object : TextWatcher {
-            private val runnable = Runnable {
-                if (!blockTextWatcher) {
-                    val q = destInput.text.toString().trim()
-                    if (q.length >= 3)
-                        searchNominatim(q) { setDestFromSuggestion(it) }
-                    else
-                        suggestions.visibility = View.GONE
-                }
-            }
-
-            override fun afterTextChanged(s: Editable?) {
-                destInput.removeCallbacks(runnable)
-                destInput.postDelayed(runnable, 400)
-            }
+            override fun afterTextChanged(s: Editable?) { clearDest.visibility = if (s.isNullOrEmpty()) View.GONE else View.VISIBLE }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
-
 
         clearOrigin.setOnClickListener {
             originInput.setText("")
@@ -202,9 +186,22 @@ class MapActivity : AppCompatActivity() {
         }
         map.overlays.add(MapEventsOverlay(mapEventsReceiver))
 
+        suggestions.setOnItemClickListener { _, _, position, _ ->
+            val item = suggestions.adapter.getItem(position) as JSONObject
+            setDestFromSuggestion(item)
+        }
 
-
-
+        destInput.addTextChangedListener(object : TextWatcher {
+            private val runnable = Runnable {
+                if (!blockTextWatcher) {
+                    val q = destInput.text.toString().trim()
+                    if (q.length >= 3) searchNominatim(q) else suggestions.visibility = View.GONE
+                }
+            }
+            override fun afterTextChanged(s: Editable?) { destInput.removeCallbacks(runnable); destInput.postDelayed(runnable, 400) }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
 
         destInput.setOnEditorActionListener { _, _, _ ->
             suggestions.visibility = View.GONE
@@ -214,51 +211,142 @@ class MapActivity : AppCompatActivity() {
         }
     }
 
+    // --- NUEVOS MÉTODOS PARA PEDIR DATOS SI FALTAN ---
+    private fun checkCarConfiguration() {
+        selectedCar?.let { car ->
+            // Si la capacidad del depósito no está definida (-1)
+            if (car.getcapacidaddeposito() == -1) {
+                pedirCapacidad(car)
+            }
+            // Si la capacidad actual (porcentaje) no está definida (-1), 
+            // y ya tenemos la capacidad total (porque acabamos de pedirla o ya estaba), pedimos el %
+            else if (car.getCapacidadactual() == -1) {
+                pedirPorcentaje(car)
+            }
+        }
+    }
+
+    private fun pedirCapacidad(coche: Usuario.Car) {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_input, null)
+        val title = view.findViewById<TextView>(R.id.dialogTitle)
+        val input = view.findViewById<EditText>(R.id.dialogInput)
+
+        val spannableTitle = SpannableString("Falta configurar: Capacidad del depósito (L)")
+        spannableTitle.setSpan(ForegroundColorSpan(Color.WHITE), 0, spannableTitle.length, 0)
+        title.text = spannableTitle
+        input.hint = "Ej: 50"
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(view)
+            .setPositiveButton("Guardar", null)
+            .setNegativeButton("Cancelar", null)
+            .setCancelable(false) // Obligatorio configurarlo
+            .create()
+
+        dialog.show()
+        // Ajustar colores
+        dialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE)
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.WHITE)
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val valor = input.text.toString()
+            if (valor.isNotEmpty()) {
+                val capacidad = valor.toIntOrNull()
+                if (capacidad != null && capacidad > 0) {
+                    coche.setCapacidaddeposito(capacidad)
+                    // Si tampoco tiene porcentaje, se inicializa a 0 o se pide después
+                    if (coche.getCapacidadactual() == -1) {
+                         coche.setCapacidadactual(0)
+                    }
+                    saveUserData()
+                    dialog.dismiss()
+                    // Una vez tenemos capacidad, comprobamos si falta el porcentaje
+                    if (coche.getCapacidadactual() == 0 || coche.getCapacidadactual() == -1) {
+                        pedirPorcentaje(coche)
+                    }
+                } else {
+                    Toast.makeText(this, "Introduce un número válido", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun pedirPorcentaje(coche: Usuario.Car) {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_input, null)
+        val title = view.findViewById<TextView>(R.id.dialogTitle)
+        val input = view.findViewById<EditText>(R.id.dialogInput)
+
+        val spannableTitle = SpannableString("Falta configurar: Porcentaje actual (%)")
+        spannableTitle.setSpan(ForegroundColorSpan(Color.WHITE), 0, spannableTitle.length, 0)
+        title.text = spannableTitle
+        input.hint = "0 - 100"
+
+        val dialog = AlertDialog.Builder(this)
+            .setView(view)
+            .setPositiveButton("Guardar", null)
+            .setNegativeButton("Omitir", null)
+            .create()
+
+        dialog.show()
+        dialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE)
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.WHITE)
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val texto = input.text.toString()
+            if (texto.isNotEmpty()) {
+                var porcentaje = texto.toIntOrNull()
+                if (porcentaje != null) {
+                    if (porcentaje < 0) porcentaje = 0
+                    if (porcentaje > 100) porcentaje = 100
+                    coche.setCapacidadactual(porcentaje)
+                    saveUserData()
+                    dialog.dismiss()
+                } else {
+                     Toast.makeText(this, "Introduce un número válido", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun saveUserData() {
+        if (usuario != null && selectedCar != null) {
+            // Actualizar el coche dentro del usuario global
+            val lista = usuario!!.coches
+            for (i in lista.indices) {
+                val c = lista[i]
+                if (c.brand == selectedCar!!.brand && c.model == selectedCar!!.model && c.year == selectedCar!!.year) {
+                    lista[i] = selectedCar!!
+                    break
+                }
+            }
+            saveManager.actualizarUsuario(usuario!!)
+        }
+    }
+    // --- FIN MÉTODOS NUEVOS ---
+
     private fun hideKeyboard(view: View) {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         imm.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
     private fun setDestFromSuggestion(item: JSONObject) {
-        suggestions.visibility = View.GONE
-
         val lat = item.optDouble("lat")
         val lon = item.optDouble("lon")
-
         setDest(GeoPoint(lat, lon))
-
+        suggestions.visibility = View.GONE
         blockTextWatcher = true
         destInput.setText(item.optString("display_name"))
-        blockTextWatcher = false
-
-        hideKeyboard(destInput)
         destInput.clearFocus()
-
+        hideKeyboard(destInput)
+        blockTextWatcher = false
         hint.text = "Destino establecido. Calculando rutas..."
         requestRoutes()
     }
 
-
     override fun onResume() { super.onResume(); map.onResume() }
     override fun onPause() { super.onPause(); map.onPause() }
-
-    private fun setOriginFromSuggestion(item: JSONObject) {
-        val lat = item.optDouble("lat")
-        val lon = item.optDouble("lon")
-
-        setOrigin(GeoPoint(lat, lon))
-
-        blockTextWatcher = true
-        originInput.setText(item.optString("display_name"))
-        blockTextWatcher = false
-
-        suggestions.visibility = View.GONE
-        hideKeyboard(originInput)
-        originInput.clearFocus()
-
-        clearRoutes()
-        if (dest != null) requestRoutes()
-    }
 
     private fun locateAndSetOrigin() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -322,49 +410,28 @@ class MapActivity : AppCompatActivity() {
         map.invalidate()
     }
 
-    private fun searchNominatim(q: String, onItemSelected: (JSONObject) -> Unit) {
+    private fun searchNominatim(q: String) {
         val url = "https://nominatim.openstreetmap.org/search?format=jsonv2&q=${Uri.encode(q)}&addressdetails=1&limit=6"
-        val req = Request.Builder()
-            .url(url)
-            .header("Accept-Language", "es")
-            .header("User-Agent", packageName)
-            .build()
-
+        val req = Request.Builder().url(url).header("Accept-Language", "es").header("User-Agent", packageName).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {}
-
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     if (!it.isSuccessful) return
-
-                    val json = JSONArray(it.body?.string() ?: "[]")
-                    val items = (0 until json.length()).map { i -> json.getJSONObject(i) }
-
+                    val items = (JSONArray(it.body?.string() ?: "[]")).let { 0.until(it.length()).map { i -> it.getJSONObject(i) } }
                     runOnUiThread {
-                        val adapter = object : ArrayAdapter<JSONObject>(
-                            this@MapActivity,
-                            android.R.layout.simple_list_item_1,
-                            items
-                        ) {
-                            override fun getView(pos: Int, view: View?, parent: ViewGroup): View {
-                                val tv = super.getView(pos, view, parent) as TextView
-                                tv.text = getItem(pos)?.optString("display_name") ?: ""
-                                return tv
+                        val adapter = object : ArrayAdapter<JSONObject>(this@MapActivity, android.R.layout.simple_list_item_1, items) {
+                            override fun getView(pos: Int, view: View?, parent: ViewGroup) = (super.getView(pos, view, parent) as TextView).apply {
+                                text = getItem(pos)?.optString("display_name") ?: ""
                             }
                         }
-
                         suggestions.adapter = adapter
                         suggestions.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
-
-                        suggestions.setOnItemClickListener { _, _, pos, _ ->
-                            onItemSelected(items[pos])
-                        }
                     }
                 }
             }
         })
     }
-
 
     private fun reverseSearchNominatim(gp: GeoPoint, isOrigin: Boolean) {
         val url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${gp.latitude}&lon=${gp.longitude}"
@@ -390,8 +457,7 @@ class MapActivity : AppCompatActivity() {
         val d = dest ?: return
         clearRoutes()
         val coords = "${o.longitude},${o.latitude};${d.longitude},${d.latitude}"
-        // IMPORTANT: pedimos steps=true para poder analizar cada segmento (distance/duration por step)
-        val url = "https://router.project-osrm.org/route/v1/driving/$coords?alternatives=true&overview=full&geometries=geojson&steps=true"
+        val url = "https://router.project-osrm.org/route/v1/driving/$coords?alternatives=true&overview=full&geometries=geojson"
         val req = Request.Builder().url(url).header("User-Agent", packageName).build()
         client.newCall(req).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) { runOnUiThread { hint.text = "Error calculando rutas: ${e.message}" } }
@@ -412,68 +478,21 @@ class MapActivity : AppCompatActivity() {
         })
     }
 
-    /**
-     * Calcula consumo en litros usando distancias clasificadas en ciudad/autovía
-     * a partir de los steps del JSON de OSRM.
-     *
-     * Heurística: para cada step calculamos su velocidad media (km/h).
-     * Si speed >= HIGHWAY_SPEED_THRESHOLD -> lo consideramos autovía,
-     * si speed < HIGHWAY_SPEED_THRESHOLD -> urbano.
-     */
-    private fun calculateConsumptionForRoute(route: JSONObject): Double {
-        // Umbral para considerar "autovía" en km/h
-        val HIGHWAY_SPEED_THRESHOLD = 75.0
-
-        var cityMeters = 0.0
-        var highwayMeters = 0.0
-
-        // Intentamos obtener legs -> steps
-        val legs = route.optJSONArray("legs")
-        if (legs != null && legs.length() > 0) {
-            for (i in 0 until legs.length()) {
-                val leg = legs.getJSONObject(i)
-                val steps = leg.optJSONArray("steps")
-                if (steps != null && steps.length() > 0) {
-                    for (j in 0 until steps.length()) {
-                        val step = steps.getJSONObject(j)
-                        val stepDist = step.optDouble("distance", 0.0) // metros
-                        val stepDur = step.optDouble("duration", 0.0) // segundos
-
-                        val speedKph = if (stepDur > 0) {
-                            val km = stepDist / 1000.0
-                            val hours = stepDur / 3600.0
-                            if (hours > 0) km / hours else 0.0
-                        } else 0.0
-
-                        if (speedKph >= HIGHWAY_SPEED_THRESHOLD) highwayMeters += stepDist else cityMeters += stepDist
-                    }
-                } else {
-                    // Fallback: si no hay steps, repartir por velocidad media del leg
-                    val legDist = leg.optDouble("distance", 0.0)
-                    val legDur = leg.optDouble("duration", 0.0)
-                    val legSpeedKph = if (legDur > 0) (legDist / 1000.0) / (legDur / 3600.0) else 0.0
-                    if (legSpeedKph >= HIGHWAY_SPEED_THRESHOLD) highwayMeters += legDist else cityMeters += legDist
-                }
-            }
-        } else {
-            // Si no hay legs, usar distancia/duration global como fallback
-            val totalDist = route.optDouble("distance", 0.0)
-            val totalDur = route.optDouble("duration", 0.0)
-            val avgSpeedKph = if (totalDur > 0) (totalDist / 1000.0) / (totalDur / 3600.0) else 0.0
-            if (avgSpeedKph >= HIGHWAY_SPEED_THRESHOLD) highwayMeters += totalDist else cityMeters += totalDist
+    private fun calculateConsumption(distanceMeters: Double, durationSeconds: Double): Double {
+        if (durationSeconds <= 0 || (consumptionCityKmpl <= 0 && consumptionHighwayKmpl <= 0)) {
+            return 0.0
         }
 
-        val cityKm = cityMeters / 1000.0
-        val highwayKm = highwayMeters / 1000.0
+        val speedKph = (distanceMeters / 1000.0) / (durationSeconds / 3600.0)
 
-        // Evitar division por cero; si valores de consumo invalidos usamos fallback (promedio)
-        val cityKmplSafe = if (consumptionCityKmpl > 0) consumptionCityKmpl else (consumptionHighwayKmpl.takeIf { it > 0 } ?: 10.0)
-        val highwayKmplSafe = if (consumptionHighwayKmpl > 0) consumptionHighwayKmpl else (consumptionCityKmpl.takeIf { it > 0 } ?: 10.0)
-
-        val litersCity = if (cityKmplSafe > 0) cityKm / cityKmplSafe else 0.0
-        val litersHighway = if (highwayKmplSafe > 0) highwayKm / highwayKmplSafe else 0.0
-
-        return litersCity + litersHighway
+        val kmpl = if (speedKph > 60 && consumptionHighwayKmpl > 0) {
+            consumptionHighwayKmpl
+        } else if (consumptionCityKmpl > 0) {
+            consumptionCityKmpl
+        } else {
+            consumptionHighwayKmpl 
+        }
+        return (distanceMeters / 1000.0) / kmpl
     }
 
     private fun drawRoutes() {
@@ -508,9 +527,7 @@ class MapActivity : AppCompatActivity() {
             val dist = r.optDouble("distance", 0.0)
             val dur = r.optDouble("duration", 0.0)
 
-            // NUEVO: calculo por segmentos (ciudad/autovía)
-            val consumoLitros = calculateConsumptionForRoute(r)
-
+            val consumoLitros = calculateConsumption(dist, dur)
             routeInfoList.add(RouteInfo("Ruta ${i + 1}", "${formatDistance(dist)} · ${formatDuration(dur)} · %.2f L".format(consumoLitros), poly.color))
         }
 
@@ -531,16 +548,59 @@ class MapActivity : AppCompatActivity() {
         map.invalidate()
     }
 
+    // --- MODIFICADO: ACTUALIZA COMBUSTIBLE AL SELECCIONAR ---
     private fun openRouteInGoogleMaps(index: Int) {
+        // 1. Calcular consumo de la ruta seleccionada
+        if (index >= 0 && index < routesData.size) {
+            val r = routesData[index]
+            val dist = r.optDouble("distance", 0.0)
+            val dur = r.optDouble("duration", 0.0)
+            val litersConsumed = calculateConsumption(dist, dur)
+
+            // 2. Restar del usuario si tiene coche seleccionado
+            if (usuario != null && selectedCar != null) {
+                // Buscamos el coche real en la lista del usuario
+                val cocheEnLista = usuario!!.coches.find {
+                    it.brand == selectedCar!!.brand && it.model == selectedCar!!.model && it.year == selectedCar!!.year
+                }
+
+                if (cocheEnLista != null) {
+                    // LÓGICA CORREGIDA: TRABAJAR CON PORCENTAJES Y LITROS
+                    val capacidadTotal = cocheEnLista.getcapacidaddeposito()
+                    val porcentajeActual = cocheEnLista.getCapacidadactual()
+
+                    if (capacidadTotal > 0 && porcentajeActual >= 0) {
+                        // Convertimos % a Litros
+                        val litrosActuales = (porcentajeActual.toDouble() / 100.0) * capacidadTotal
+                        
+                        // Restamos el consumo
+                        var nuevosLitros = litrosActuales - litersConsumed
+                        if (nuevosLitros < 0) nuevosLitros = 0.0
+
+                        // Convertimos de nuevo a %
+                        val nuevoPorcentaje = ((nuevosLitros / capacidadTotal) * 100).roundToInt()
+
+                        cocheEnLista.setCapacidadactual(nuevoPorcentaje)
+                        
+                        // Guardamos
+                        saveManager.actualizarUsuario(usuario!!)
+                        
+                        Toast.makeText(this, "Combustible actualizado: -${String.format("%.2f", litersConsumed)} L", Toast.LENGTH_SHORT).show()
+                    } else {
+                        // Si no están configurados, no restamos nada y avisamos
+                        Toast.makeText(this, "Configura el depósito para descontar combustible", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+
+        // 3. Abrir Google Maps (código original)
         val o = origin ?: return
         val d = dest ?: return
-
-        // Abrimos Google Maps con origen y destino.
-        // Nota: para preservar una ruta alternativa exacta habría que construir waypoints;
-        // aquí abrimos la ruta origen->destino (Google recalculará su propia mejor ruta).
         val url = "https://www.google.com/maps/dir/?api=1&origin=${o.latitude},${o.longitude}&destination=${d.latitude},${d.longitude}&travelmode=driving"
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
+    // --- FIN DE MODIFICACIÓN ---
 
     private fun clearRoutes() {
         routePolylines.forEach { map.overlays.remove(it) }
