@@ -13,14 +13,17 @@ import android.widget.TextView;
 import android.widget.ImageButton;
 import android.widget.Toast; 
 
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
 
     public int capacidadcombustible;
     public Usuario usuarioconectado;
 
-    // --- NUEVO: Referencias para el gráfico circular ---
+    // --- Referencias para previews ---
     private CircularStateView circlePreview;
     private TextView textPercentPreview;
+    private TextView textListaCochesPreview;
     // --- FIN ---
 
     @Override
@@ -35,14 +38,16 @@ public class MainActivity extends AppCompatActivity {
         TextView textoincio = findViewById(R.id.textViewNombre); 
         Button botoncuenta = findViewById(R.id.botoncuenta); 
         View botonride = findViewById(R.id.botonRide);
-        // Cambiado a View genérico porque ahora es un layout
         View botoncombustible = findViewById(R.id.botoncombustible);
+        View botonMisCoches = findViewById(R.id.button3); // Ahora es un Layout
         ImageButton logoButton = findViewById(R.id.logoButton);
         ImageButton homeButton = findViewById(R.id.homeButton);
+        ImageButton gasofaButton = findViewById(R.id.gasofaButton);
 
-        // --- NUEVO: Referencias internas del botón combustible ---
+        // --- Referencias internas de los previews ---
         circlePreview = findViewById(R.id.mainCircleState);
         textPercentPreview = findViewById(R.id.mainPercentText);
+        textListaCochesPreview = findViewById(R.id.listaCochesPreview);
         // --- FIN ---
         
         // --- CORRECCIÓN SCROLL ---
@@ -62,13 +67,12 @@ public class MainActivity extends AppCompatActivity {
         });
         // --- FIN CORRECCIÓN ---
 
-        capacidadcombustible = 50;
-
         if (usuarioconectado != null) {
             textoincio.setText("Hola " + usuarioconectado.nombre);
             
-            // --- NUEVO: Actualizar gráfico con el coche por defecto ---
+            // Actualizar previews
             actualizarGraficoCombustible();
+            actualizarListaCochesPreview();
         }
 
         botoncuenta.setOnClickListener(new View.OnClickListener() {
@@ -112,6 +116,25 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Click en la preview de "Mis Coches"
+        botonMisCoches.setOnClickListener(new View.OnClickListener() {
+             @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, MisCochesActivity.class);
+                intent.putExtra("usuario", usuarioconectado);
+                startActivity(intent);
+            }
+        });
+
+        gasofaButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, DepositoActivity.class);
+                intent.putExtra("usuario", usuarioconectado);
+                startActivity(intent);
+            }
+        });
+
         logoButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -129,33 +152,48 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // --- NUEVO: Método para actualizar el gráfico ---
+    // --- MÉTODOS PARA ACTUALIZAR PREVIEWS ---
     private void actualizarGraficoCombustible() {
         if (usuarioconectado == null || circlePreview == null || textPercentPreview == null) return;
 
-        // Obtenemos el coche más usado (lógica copiada de DepositoActivity)
         Usuario.Car coche = usuarioconectado.cochemasusado();
 
         if (coche != null) {
             int porcentaje = coche.getCapacidadactual();
-            
-            // Si es -1 (no configurado), mostramos 0% o un estado neutro
             if (porcentaje == -1) porcentaje = 0;
 
-            // Actualizar círculo
-            circlePreview.setState(porcentaje, false); // false = sin animación interna compleja
-
-            // Calcular color (Rojo -> Verde)
+            circlePreview.setState(porcentaje, false);
             int color = interpolateColor(Color.RED, Color.GREEN, porcentaje / 100f);
 
-            // Actualizar texto
             textPercentPreview.setText(porcentaje + "%");
             textPercentPreview.setTextColor(color);
         } else {
-            // Si no hay coche, mostrar vacío
             textPercentPreview.setText("--%");
             circlePreview.setState(0, false);
         }
+    }
+
+    private void actualizarListaCochesPreview() {
+        if (usuarioconectado == null || textListaCochesPreview == null) return;
+
+        List<Usuario.Car> coches = usuarioconectado.getCoches();
+
+        if (coches.isEmpty()) {
+            textListaCochesPreview.setText("No tienes coches añadidos");
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        // Mostramos un máximo de 3 coches para que quepa
+        for (int i = 0; i < Math.min(coches.size(), 3); i++) {
+            Usuario.Car coche = coches.get(i);
+            sb.append("• ").append(coche.getBrand()).append(" ").append(coche.getModel()).append("\n");
+        }
+        if(coches.size() > 3){
+            sb.append("...");
+        }
+
+        textListaCochesPreview.setText(sb.toString().trim());
     }
 
     private int interpolateColor(int start, int end, float fraction) {

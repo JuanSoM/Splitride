@@ -30,6 +30,8 @@ class MisCochesActivity : AppCompatActivity() {
         val logoButton = findViewById<ImageButton>(R.id.logoButton)
         val homeButton = findViewById<ImageButton>(R.id.homeButton)
         val addCarButton = findViewById<Button>(R.id.botonAnadir)
+        // NUEVO BOTÓN GASOLINERA
+        val gasofaButton = findViewById<ImageButton>(R.id.gasofaButton)
         carsContainer = findViewById(R.id.contenedorCoches)
 
         loadCarsFromUser()
@@ -41,6 +43,13 @@ class MisCochesActivity : AppCompatActivity() {
             intent.putExtra("usuario", usuario)
             startActivity(intent)
             finish()
+        }
+        
+        // Funcionalidad del botón gasolinera
+        gasofaButton.setOnClickListener {
+            val intent = Intent(this@MisCochesActivity, DepositoActivity::class.java)
+            intent.putExtra("usuario", usuario)
+            startActivity(intent)
         }
 
         addCarButton.setOnClickListener { showAddCarDialog() }

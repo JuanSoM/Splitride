@@ -8,47 +8,73 @@
     android:background="@drawable/gradient_wallpaper"
     tools:context=".MainActivity">
 
-    <!-- Toolbar at the bottom -->
+    <!-- BARRA INFERIOR -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="200dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="-100dp"
         android:background="@drawable/rounded_menu"
         android:minHeight="?attr/actionBarSize"
+        android:paddingVertical="10dp"
         android:theme="?attr/actionBarTheme"
         app:buttonGravity="center_vertical|bottom"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        android:paddingVertical="10dp">
+        app:layout_constraintStart_toStartOf="parent" />
 
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-            <ImageButton
-                android:id="@+id/logoButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@android:color/transparent"
-                android:src="@drawable/logo"
-                android:scaleType="fitCenter"
-                android:layout_alignParentStart="true"
-                android:layout_marginStart="30dp"
-                android:layout_centerVertical="true"
-                android:contentDescription="@string/app_name" />
-            <ImageButton
-                android:id="@+id/homeButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@android:color/transparent"
-                android:src="@drawable/home"
-                android:scaleType="fitCenter"
-                android:layout_alignParentEnd="true"
-                android:layout_marginEnd="30dp"
-                android:layout_centerVertical="true"
-                android:contentDescription="Ir a inicio" />
-        </RelativeLayout>
-    </androidx.appcompat.widget.Toolbar>
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/bottomButtonsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/toolbar">
+
+        <ImageButton
+            android:id="@+id/logoButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="@string/app_name"
+            android:scaleType="fitCenter"
+            android:src="@drawable/logo"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/gasofaButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:scaleType="centerInside"
+            app:srcCompat="@drawable/gasolinera"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/homeButton"
+            app:layout_constraintStart_toEndOf="@+id/logoButton"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/homeButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="30dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="Ir a inicio"
+            android:scaleType="fitCenter"
+            android:src="@drawable/home"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+    <!-- FIN BARRA INFERIOR -->
 
     <!-- Scrollable content area -->
     <ScrollView
@@ -145,7 +171,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/botonRide" />
 
-            <!-- BOTÓN COMBUSTIBLE PERSONALIZADO (PREVIEW) -->
+            <!-- BOTÓN COMBUSTIBLE (PREVIEW) -->
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/botoncombustible"
                 android:layout_width="0dp"
@@ -194,21 +220,50 @@
                     app:layout_constraintBottom_toBottomOf="@id/mainCircleState"
                     app:layout_constraintStart_toStartOf="@id/mainCircleState"
                     app:layout_constraintEnd_toEndOf="@id/mainCircleState"/>
-
             </androidx.constraintlayout.widget.ConstraintLayout>
-            <!-- FIN BOTÓN PERSONALIZADO -->
 
-            <Button
+            <!-- BOTÓN MIS COCHES PERSONALIZADO (PREVIEW) -->
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/button3"
                 android:layout_width="0dp"
                 android:layout_height="225dp"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/rounded_button"
-                android:text="Mis Coches"
-                android:textColor="@color/black"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="12dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/button8" />
+                app:layout_constraintTop_toBottomOf="@id/button8">
+
+                <TextView
+                    android:id="@+id/titleMisCoches"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Mis Coches"
+                    android:textColor="@color/black"
+                    android:textStyle="bold"
+                    android:textSize="18sp"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+                <TextView
+                    android:id="@+id/listaCochesPreview"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:layout_marginTop="8dp"
+                    android:text="Cargando..."
+                    android:textColor="#555555"
+                    android:textSize="16sp"
+                    android:gravity="center_horizontal"
+                    android:ellipsize="end"
+                    app:layout_constraintTop_toBottomOf="@id/titleMisCoches"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
     </ScrollView>
