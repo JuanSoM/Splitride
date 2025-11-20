@@ -9,91 +9,56 @@
     tools:context=".MainActivity">
 
     <!-- Toolbar at the bottom -->
-
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="0dp"
-        android:layout_height="200dp"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="-100dp"
+        android:layout_height="wrap_content"
         android:background="@drawable/rounded_menu"
         android:minHeight="?attr/actionBarSize"
-        android:paddingVertical="10dp"
         android:theme="?attr/actionBarTheme"
         app:buttonGravity="center_vertical|bottom"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1.0">
+        android:paddingVertical="10dp">
 
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <ImageButton
+                android:id="@+id/logoButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@android:color/transparent"
+                android:src="@drawable/logo"
+                android:scaleType="fitCenter"
+                android:layout_alignParentStart="true"
+                android:layout_marginStart="30dp"
+                android:layout_centerVertical="true"
+                android:contentDescription="@string/app_name" />
+            <ImageButton
+                android:id="@+id/homeButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@android:color/transparent"
+                android:src="@drawable/home"
+                android:scaleType="fitCenter"
+                android:layout_alignParentEnd="true"
+                android:layout_marginEnd="30dp"
+                android:layout_centerVertical="true"
+                android:contentDescription="Ir a inicio" />
+        </RelativeLayout>
     </androidx.appcompat.widget.Toolbar>
 
     <!-- Scrollable content area -->
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/relativeLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="660dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="16dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/scrollView2"
-        app:layout_constraintVertical_bias="0.944">
-
-        <ImageButton
-            android:id="@+id/gasofaButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@android:color/transparent"
-            android:scaleType="centerInside"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toStartOf="@+id/homeButton"
-            app:layout_constraintStart_toEndOf="@+id/logoButton"
-            app:srcCompat="@drawable/gasolinera" />
-
-        <ImageButton
-            android:id="@+id/logoButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@android:color/transparent"
-            android:contentDescription="@string/app_name"
-            android:scaleType="fitCenter"
-            android:src="@drawable/logo"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-        <ImageButton
-            android:id="@+id/homeButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginEnd="30dp"
-            android:background="@android:color/transparent"
-            android:contentDescription="Ir a inicio"
-            android:scaleType="fitCenter"
-            android:src="@drawable/home"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
-
     <ScrollView
         android:id="@+id/scrollView2"
         android:layout_width="0dp"
-        android:layout_height="900dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/toolbar"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
@@ -102,18 +67,18 @@
 
             <!-- Header: Greeting and Account Button -->
             <TextView
-                android:id="@+id/textViewCochess"
+                android:id="@+id/textViewNombre"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="16dp"
                 android:fontFamily="@font/lexend_giga_medium"
                 android:text="Hola Marta"
                 android:textColor="#FFFFFF"
                 android:textSize="25sp"
-                app:layout_constraintBottom_toBottomOf="@id/botoncuenta"
                 app:layout_constraintEnd_toStartOf="@id/botoncuenta"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="@id/botoncuenta"
+                android:layout_marginEnd="16dp"/>
 
             <Button
                 android:id="@+id/botoncuenta"
@@ -128,7 +93,7 @@
                 android:id="@+id/botonRide"
                 android:layout_width="0dp"
                 android:layout_height="140dp"
-                android:layout_marginTop="40dp"
+                android:layout_marginTop="24dp"
                 android:background="@drawable/rounded_button"
                 android:clickable="true"
                 android:focusable="true"
@@ -173,7 +138,7 @@
                 android:layout_marginTop="16dp"
                 android:layout_marginEnd="8dp"
                 android:background="@drawable/rounded_button"
-                android:text="Button"
+                android:text="Estadísticas"
                 android:textColor="@color/black"
                 app:layout_constraintEnd_toStartOf="@id/botoncombustible"
                 app:layout_constraintHorizontal_chainStyle="spread"
@@ -187,7 +152,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/rounded_button"
-                android:text="Button"
+                android:text="Combustible"
                 android:textColor="@color/black"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/button8"
@@ -199,7 +164,7 @@
                 android:layout_height="225dp"
                 android:layout_marginTop="16dp"
                 android:background="@drawable/rounded_button"
-                android:text="Button"
+                android:text="Mis Coches"
                 android:textColor="@color/black"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"

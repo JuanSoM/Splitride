@@ -2,6 +2,7 @@ package com.example.consumocarros
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.*
@@ -82,6 +83,10 @@ class MisCochesActivity : AppCompatActivity() {
 
         dialog.show()
 
+        // --- BOTONES EN BLANCO PARA "AÑADIR COCHE" ---
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE)
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.WHITE)
+
         listaSugerencias.setOnItemClickListener { _, _, position, _ ->
             val seleccion = adapter.getItem(position)
             inputBusqueda.setText(seleccion)
@@ -107,8 +112,7 @@ class MisCochesActivity : AppCompatActivity() {
                 CoroutineScope(Dispatchers.Main).launch {
                     val consumption = ApiHelper.getVehicleConsumption(brand, model, year)
 
-                    // --- CORRECCIÓN DEFINITIVA ---
-                    // ApiHelper ya devuelve km/L con punto decimal. Solo parseamos.
+                    // Parseamos directamente los valores que ya vienen en km/L con punto
                     val cityKmpl = consumption.city.toDoubleOrNull() ?: 0.0
                     val highwayKmpl = consumption.highway.toDoubleOrNull() ?: 0.0
                     val avgKmpl = consumption.avg.toDoubleOrNull() ?: 0.0
@@ -164,7 +168,7 @@ class MisCochesActivity : AppCompatActivity() {
         }
 
         card.setOnLongClickListener {
-            AlertDialog.Builder(this)
+            val dialog = AlertDialog.Builder(this)
                 .setTitle("Eliminar coche")
                 .setMessage("¿Quieres eliminar ${car.brand} ${car.model} (${car.avgKmpl} km/L)?")
                 .setPositiveButton("Eliminar") { _, _ ->
@@ -176,7 +180,14 @@ class MisCochesActivity : AppCompatActivity() {
                     }
                 }
                 .setNegativeButton("Cancelar", null)
-                .show()
+                .create()
+
+            dialog.show()
+
+            // --- BOTONES EN NEGRO PARA "ELIMINAR COCHE" ---
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.BLACK)
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.BLACK)
+
             true
         }
 
