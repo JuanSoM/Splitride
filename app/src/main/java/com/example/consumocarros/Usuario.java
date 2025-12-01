@@ -15,6 +15,10 @@ public class Usuario implements Serializable {
     public List<Car> coches; // lista de coches del usuario
     public Car cochemasusado;
     private String idUsuario;
+
+    public List<String> listaAmigosIds;
+    public List<String> solicitudes;
+
     private static SecureRandom random = new SecureRandom();
 
 
@@ -46,6 +50,22 @@ public class Usuario implements Serializable {
     public String getApellidos() { return apellidos; }
     public void setApellidos(String apellidos) { this.apellidos = apellidos; }
 
+
+    public List<String> getListaAmigosIds() {
+        if (listaAmigosIds == null) {
+            listaAmigosIds = new ArrayList<>();
+        }
+        return listaAmigosIds;
+    }
+
+    public void agregarAmigo(String idAmigo) {
+        if (listaAmigosIds == null) {
+            listaAmigosIds = new ArrayList<>();
+        }
+        if (!listaAmigosIds.contains(idAmigo)) {
+            listaAmigosIds.add(idAmigo);
+        }
+    }
     public List<Car> getCoches() { return coches; }
 
     public void agregarCoche(Car coche) {

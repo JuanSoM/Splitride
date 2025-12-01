@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
         usuarioconectado = (Usuario) getIntent().getSerializableExtra("usuario");
 
         // Referencias a los elementos
-        TextView textoincio = findViewById(R.id.textViewNombre); 
+        TextView textoincio = findViewById(R.id.textViewAmigos);
         Button botoncuenta = findViewById(R.id.botoncuenta); 
         View botonride = findViewById(R.id.botonRide);
         View botoncombustible = findViewById(R.id.botoncombustible);
@@ -43,6 +43,8 @@ public class MainActivity extends AppCompatActivity {
         ImageButton logoButton = findViewById(R.id.logoButton);
         ImageButton homeButton = findViewById(R.id.homeButton);
         ImageButton gasofaButton = findViewById(R.id.gasofaButton);
+        Button botonSocial = findViewById(R.id.botonsocial);
+
 
         // --- Referencias internas de los previews ---
         circlePreview = findViewById(R.id.mainCircleState);
@@ -106,6 +108,18 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
+
+        botonSocial.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, SocialActivity.class);
+                intent.putExtra("usuario", usuarioconectado);
+                startActivity(intent);
+            }
+        });
+
+
+
 
         botoncombustible.setOnClickListener(new View.OnClickListener() {
             @Override

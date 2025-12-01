@@ -93,7 +93,7 @@
 
             <!-- Header: Greeting and Account Button -->
             <TextView
-                android:id="@+id/textViewNombre"
+                android:id="@+id/textViewAmigos"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/lexend_giga_medium"
@@ -158,7 +158,7 @@
 
             <!-- Grid of other options -->
             <Button
-                android:id="@+id/button8"
+                android:id="@+id/botonsocial"
                 android:layout_width="0dp"
                 android:layout_height="225dp"
                 android:layout_marginTop="16dp"
@@ -183,20 +183,21 @@
                 android:focusable="true"
                 android:padding="10dp"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@id/button8"
+                app:layout_constraintStart_toEndOf="@id/botonsocial"
                 app:layout_constraintTop_toBottomOf="@id/botonRide">
 
                 <TextView
                     android:id="@+id/titleCombustible"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="@font/lexend_giga_medium"
                     android:text="Combustible"
                     android:textColor="@color/black"
-                    android:textStyle="bold"
                     android:textSize="16sp"
-                    app:layout_constraintTop_toTopOf="parent"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent" />
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <com.example.consumocarros.CircularStateView
                     android:id="@+id/mainCircleState"
@@ -234,19 +235,20 @@
                 android:padding="12dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/button8">
+                app:layout_constraintTop_toBottomOf="@id/botonsocial">
 
                 <TextView
                     android:id="@+id/titleMisCoches"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="@font/lexend_giga_medium"
                     android:text="Mis Coches"
                     android:textColor="@color/black"
-                    android:textStyle="bold"
                     android:textSize="18sp"
-                    app:layout_constraintTop_toTopOf="parent"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent" />
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <TextView
                     android:id="@+id/listaCochesPreview"
