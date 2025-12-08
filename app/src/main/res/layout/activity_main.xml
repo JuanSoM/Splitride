@@ -37,6 +37,19 @@
         app:layout_constraintTop_toTopOf="@+id/toolbar">
 
         <ImageButton
+            android:id="@+id/historialButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:contentDescription="Historial"
+            android:scaleType="fitCenter"
+            android:src="@drawable/historial_icono"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/logoButton"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"/>
+
+        <ImageButton
             android:id="@+id/logoButton"
             android:layout_width="40dp"
             android:layout_height="40dp"
@@ -193,8 +206,8 @@
                     android:fontFamily="@font/lexend_giga_medium"
                     android:text="Combustible"
                     android:textColor="@color/black"
-                    android:textSize="16sp"
                     android:textStyle="bold"
+                    android:textSize="16sp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
@@ -223,7 +236,7 @@
                     app:layout_constraintEnd_toEndOf="@id/mainCircleState"/>
             </androidx.constraintlayout.widget.ConstraintLayout>
 
-            <!-- BOTÓN MIS COCHES PERSONALIZADO (PREVIEW) -->
+            <!-- BOTÓN MIS COCHES (PREVIEW) -->
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/button3"
                 android:layout_width="0dp"
@@ -241,11 +254,10 @@
                     android:id="@+id/titleMisCoches"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/lexend_giga_medium"
                     android:text="Mis Coches"
                     android:textColor="@color/black"
-                    android:textSize="18sp"
                     android:textStyle="bold"
+                    android:textSize="18sp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />

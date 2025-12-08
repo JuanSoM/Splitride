@@ -12,13 +12,11 @@ public class Usuario implements Serializable {
     private String usuario;
     public String nombre;
     public String apellidos;
-    public List<Car> coches; // lista de coches del usuario
+    public List<Car> coches;
+    public List<Viaje> viajes;
+    public List<String> listaAmigosIds;
     public Car cochemasusado;
     private String idUsuario;
-
-    public List<String> listaAmigosIds;
-    public List<String> solicitudes;
-
     private static SecureRandom random = new SecureRandom();
 
 
@@ -28,8 +26,43 @@ public class Usuario implements Serializable {
         this.nombre = nombre;
         this.apellidos = apellidos;
         this.coches = new ArrayList<>();
+        this.viajes = new ArrayList<>(); 
+        this.listaAmigosIds = new ArrayList<>();
         this.idUsuario = this.generarIDUsuario();
     }
+
+    // --- Métodos para Viajes ---
+    public List<Viaje> getViajes() {
+        if (viajes == null) {
+            viajes = new ArrayList<>(); // Defensa anti-null
+        }
+        return viajes; 
+    }
+    public void agregarViaje(Viaje viaje) {
+        if (viajes == null) {
+            viajes = new ArrayList<>();
+        }
+        this.viajes.add(viaje); 
+    }
+    // --- FIN ---
+
+    // --- MÉTODOS PARA AMIGOS ---
+    public List<String> getListaAmigosIds() {
+        if (listaAmigosIds == null) {
+            listaAmigosIds = new ArrayList<>();
+        }
+        return listaAmigosIds;
+    }
+
+    public void agregarAmigo(String idAmigo) {
+        if (this.listaAmigosIds == null) {
+            this.listaAmigosIds = new ArrayList<>();
+        }
+        if (!this.listaAmigosIds.contains(idAmigo)) {
+            this.listaAmigosIds.add(idAmigo);
+        }
+    }
+    // --- FIN ---
 
     public String getIdUsuario() {
         return idUsuario;
@@ -50,33 +83,21 @@ public class Usuario implements Serializable {
     public String getApellidos() { return apellidos; }
     public void setApellidos(String apellidos) { this.apellidos = apellidos; }
 
-
-    public List<String> getListaAmigosIds() {
-        if (listaAmigosIds == null) {
-            listaAmigosIds = new ArrayList<>();
-        }
-        return listaAmigosIds;
+    public List<Car> getCoches() { 
+        if(coches == null) coches = new ArrayList<>();
+        return coches; 
     }
-
-    public void agregarAmigo(String idAmigo) {
-        if (listaAmigosIds == null) {
-            listaAmigosIds = new ArrayList<>();
-        }
-        if (!listaAmigosIds.contains(idAmigo)) {
-            listaAmigosIds.add(idAmigo);
-        }
-    }
-    public List<Car> getCoches() { return coches; }
 
     public void agregarCoche(Car coche) {
+        if(coches == null) coches = new ArrayList<>();
         this.coches.add(coche);
     }
 
     public void eliminarCoche(Car coche) {
-        this.coches.remove(coche);
+        if(coches != null) this.coches.remove(coche);
     }
     public void aumentaruso(Car coche){
-
+        if(coches == null) return;
         for(Car rayo: this.coches){
             if(rayo.equals(coche)){
                 rayo.vecesusado++;
@@ -85,7 +106,8 @@ public class Usuario implements Serializable {
         }
     }
     public Car cochemasusado(){
-        Car piston = new Car("rayo", "macqueen", "0","Copapisaton","joder","nosequemasponer");
+        if(coches == null || coches.isEmpty()) return null;
+        Car piston = coches.get(0);
         for(Car rayo: this.coches){
             if(piston.vecesusado<= rayo.vecesusado){
                 piston = rayo;
@@ -105,12 +127,37 @@ public class Usuario implements Serializable {
                 '}';
     }
 
-    // --- CLASE Car MODIFICADA ---
+    // --- Clase Viaje ---
+    public static class Viaje implements Serializable {
+        private final String origen;
+        private final String destino;
+        private final double distanciaKm;
+        private final double litrosConsumidos;
+        private final String cocheUsado;
+        private final long timestamp;
+
+        public Viaje(String origen, String destino, double distanciaKm, double litrosConsumidos, String cocheUsado) {
+            this.origen = origen;
+            this.destino = destino;
+            this.distanciaKm = distanciaKm;
+            this.litrosConsumidos = litrosConsumidos;
+            this.cocheUsado = cocheUsado;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        public String getOrigen() { return origen; }
+        public String getDestino() { return destino; }
+        public double getDistanciaKm() { return distanciaKm; }
+        public double getLitrosConsumidos() { return litrosConsumidos; }
+        public String getCocheUsado() { return cocheUsado; }
+        public long getTimestamp() { return timestamp; }
+    }
+
+    // --- Clase Car ---
     public static class Car implements Serializable {
         private String brand;
         private String model;
         private String year;
-        // Campos nuevos
         private String cityKmpl;
         private String highwayKmpl;
         private String avgKmpl;
@@ -118,7 +165,6 @@ public class Usuario implements Serializable {
         private int capacidadactual;
         private int vecesusado;
 
-        // Constructor modificado
         public Car(String brand, String model, String year, String cityKmpl, String highwayKmpl, String avgKmpl) {
             this.brand = brand;
             this.model = model;
@@ -131,34 +177,21 @@ public class Usuario implements Serializable {
             this.capacidadactual = -1;
         }
 
-        public int getCapacidadactual() {
-            return capacidadactual;
-        }
-
-        public void setCapacidadactual(int capacidadactual) {
-            this.capacidadactual = capacidadactual;
-        }
-
-        // Getters antiguos
+        public int getCapacidadactual() { return capacidadactual; }
+        public void setCapacidadactual(int capacidadactual) { this.capacidadactual = capacidadactual; }
         public String getBrand() { return brand; }
         public String getModel() { return model; }
         public String getYear() { return year; }
-
-        // Getters nuevos
         public String getCityKmpl() { return cityKmpl; }
         public String getHighwayKmpl() { return highwayKmpl; }
         public String getAvgKmpl() { return avgKmpl; }
         public int getcapacidaddeposito() { return capacidaddeposito; }
         public int getvecesusado() { return vecesusado; }
-
-        public void setCapacidaddeposito(int capacidaddeposito) {
-            this.capacidaddeposito = capacidaddeposito;
-        }
+        public void setCapacidaddeposito(int capacidaddeposito) { this.capacidaddeposito = capacidaddeposito; }
 
         @Override
         public String toString() {
-            // Modificamos el toString para que sea más útil
-            return brand + " " + model + " " + year + " (Avg: " + avgKmpl + " km/L)";
+            return brand + " " + model + " " + year;
         }
     }
 }

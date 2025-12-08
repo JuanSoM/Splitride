@@ -30,8 +30,9 @@ class MisCochesActivity : AppCompatActivity() {
         val logoButton = findViewById<ImageButton>(R.id.logoButton)
         val homeButton = findViewById<ImageButton>(R.id.homeButton)
         val addCarButton = findViewById<Button>(R.id.botonAnadir)
-        // NUEVO BOTÓN GASOLINERA
         val gasofaButton = findViewById<ImageButton>(R.id.gasofaButton)
+        // AÑADIDO: Referencia al botón de historial
+        val historialButton = findViewById<ImageButton>(R.id.historialButton)
         carsContainer = findViewById(R.id.contenedorCoches)
 
         loadCarsFromUser()
@@ -45,9 +46,15 @@ class MisCochesActivity : AppCompatActivity() {
             finish()
         }
         
-        // Funcionalidad del botón gasolinera
         gasofaButton.setOnClickListener {
             val intent = Intent(this@MisCochesActivity, DepositoActivity::class.java)
+            intent.putExtra("usuario", usuario)
+            startActivity(intent)
+        }
+
+        // AÑADIDO: Funcionalidad del botón de historial
+        historialButton.setOnClickListener {
+            val intent = Intent(this@MisCochesActivity, HistorialActivity::class.java)
             intent.putExtra("usuario", usuario)
             startActivity(intent)
         }
@@ -92,7 +99,6 @@ class MisCochesActivity : AppCompatActivity() {
 
         dialog.show()
 
-        // --- BOTONES EN BLANCO PARA "AÑADIR COCHE" ---
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE)
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.WHITE)
 
@@ -121,7 +127,6 @@ class MisCochesActivity : AppCompatActivity() {
                 CoroutineScope(Dispatchers.Main).launch {
                     val consumption = ApiHelper.getVehicleConsumption(brand, model, year)
 
-                    // Parseamos directamente los valores que ya vienen en km/L con punto
                     val cityKmpl = consumption.city.toDoubleOrNull() ?: 0.0
                     val highwayKmpl = consumption.highway.toDoubleOrNull() ?: 0.0
                     val avgKmpl = consumption.avg.toDoubleOrNull() ?: 0.0
@@ -193,7 +198,6 @@ class MisCochesActivity : AppCompatActivity() {
 
             dialog.show()
 
-            // --- BOTONES EN NEGRO PARA "ELIMINAR COCHE" ---
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.BLACK)
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.BLACK)
 

@@ -97,9 +97,7 @@ class MapActivity : AppCompatActivity() {
             it.highwayKmpl.toDoubleOrNull()?.let { highway -> consumptionHighwayKmpl = highway }
         }
         
-        // --- NUEVO: VERIFICAR SI FALTAN DATOS DEL DEPÓSITO ---
         checkCarConfiguration()
-        // --- FIN ---
 
         val btnBack = findViewById<ImageButton>(R.id.btn_back)
         btnBack.setOnClickListener {
@@ -211,15 +209,11 @@ class MapActivity : AppCompatActivity() {
         }
     }
 
-    // --- NUEVOS MÉTODOS PARA PEDIR DATOS SI FALTAN ---
     private fun checkCarConfiguration() {
         selectedCar?.let { car ->
-            // Si la capacidad del depósito no está definida (-1)
             if (car.getcapacidaddeposito() == -1) {
                 pedirCapacidad(car)
             }
-            // Si la capacidad actual (porcentaje) no está definida (-1), 
-            // y ya tenemos la capacidad total (porque acabamos de pedirla o ya estaba), pedimos el %
             else if (car.getCapacidadactual() == -1) {
                 pedirPorcentaje(car)
             }
@@ -240,11 +234,10 @@ class MapActivity : AppCompatActivity() {
             .setView(view)
             .setPositiveButton("Guardar", null)
             .setNegativeButton("Cancelar", null)
-            .setCancelable(false) // Obligatorio configurarlo
+            .setCancelable(false)
             .create()
 
         dialog.show()
-        // Ajustar colores
         dialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE)
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.WHITE)
@@ -255,13 +248,11 @@ class MapActivity : AppCompatActivity() {
                 val capacidad = valor.toIntOrNull()
                 if (capacidad != null && capacidad > 0) {
                     coche.setCapacidaddeposito(capacidad)
-                    // Si tampoco tiene porcentaje, se inicializa a 0 o se pide después
                     if (coche.getCapacidadactual() == -1) {
                          coche.setCapacidadactual(0)
                     }
                     saveUserData()
                     dialog.dismiss()
-                    // Una vez tenemos capacidad, comprobamos si falta el porcentaje
                     if (coche.getCapacidadactual() == 0 || coche.getCapacidadactual() == -1) {
                         pedirPorcentaje(coche)
                     }
@@ -312,7 +303,6 @@ class MapActivity : AppCompatActivity() {
 
     private fun saveUserData() {
         if (usuario != null && selectedCar != null) {
-            // Actualizar el coche dentro del usuario global
             val lista = usuario!!.coches
             for (i in lista.indices) {
                 val c = lista[i]
@@ -324,7 +314,6 @@ class MapActivity : AppCompatActivity() {
             saveManager.actualizarUsuario(usuario!!)
         }
     }
-    // --- FIN MÉTODOS NUEVOS ---
 
     private fun hideKeyboard(view: View) {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
@@ -548,59 +537,54 @@ class MapActivity : AppCompatActivity() {
         map.invalidate()
     }
 
-    // --- MODIFICADO: ACTUALIZA COMBUSTIBLE AL SELECCIONAR ---
     private fun openRouteInGoogleMaps(index: Int) {
-        // 1. Calcular consumo de la ruta seleccionada
         if (index >= 0 && index < routesData.size) {
             val r = routesData[index]
             val dist = r.optDouble("distance", 0.0)
             val dur = r.optDouble("duration", 0.0)
             val litersConsumed = calculateConsumption(dist, dur)
 
-            // 2. Restar del usuario si tiene coche seleccionado
             if (usuario != null && selectedCar != null) {
-                // Buscamos el coche real en la lista del usuario
                 val cocheEnLista = usuario!!.coches.find {
                     it.brand == selectedCar!!.brand && it.model == selectedCar!!.model && it.year == selectedCar!!.year
                 }
 
                 if (cocheEnLista != null) {
-                    // LÓGICA CORREGIDA: TRABAJAR CON PORCENTAJES Y LITROS
                     val capacidadTotal = cocheEnLista.getcapacidaddeposito()
                     val porcentajeActual = cocheEnLista.getCapacidadactual()
 
                     if (capacidadTotal > 0 && porcentajeActual >= 0) {
-                        // Convertimos % a Litros
                         val litrosActuales = (porcentajeActual.toDouble() / 100.0) * capacidadTotal
-                        
-                        // Restamos el consumo
                         var nuevosLitros = litrosActuales - litersConsumed
                         if (nuevosLitros < 0) nuevosLitros = 0.0
-
-                        // Convertimos de nuevo a %
                         val nuevoPorcentaje = ((nuevosLitros / capacidadTotal) * 100).roundToInt()
-
                         cocheEnLista.setCapacidadactual(nuevoPorcentaje)
-                        
-                        // Guardamos
-                        saveManager.actualizarUsuario(usuario!!)
-                        
                         Toast.makeText(this, "Combustible actualizado: -${String.format("%.2f", litersConsumed)} L", Toast.LENGTH_SHORT).show()
-                    } else {
-                        // Si no están configurados, no restamos nada y avisamos
-                        Toast.makeText(this, "Configura el depósito para descontar combustible", Toast.LENGTH_LONG).show()
                     }
+                    
+                    val origenStr = originInput.text.toString()
+                    val destinoStr = destInput.text.toString()
+                    val viaje = Usuario.Viaje(
+                        origenStr,
+                        destinoStr,
+                        dist / 1000.0, 
+                        litersConsumed,
+                        cocheEnLista.toString()
+                    )
+                    usuario!!.agregarViaje(viaje)
+
+                    saveManager.actualizarUsuario(usuario!!)
+                } else {
+                     Toast.makeText(this, "Configura el depósito para descontar combustible", Toast.LENGTH_LONG).show()
                 }
             }
         }
 
-        // 3. Abrir Google Maps (código original)
         val o = origin ?: return
         val d = dest ?: return
         val url = "https://www.google.com/maps/dir/?api=1&origin=${o.latitude},${o.longitude}&destination=${d.latitude},${d.longitude}&travelmode=driving"
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
     }
-    // --- FIN DE MODIFICACIÓN ---
 
     private fun clearRoutes() {
         routePolylines.forEach { map.overlays.remove(it) }

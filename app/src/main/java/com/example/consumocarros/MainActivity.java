@@ -34,27 +34,27 @@ public class MainActivity extends AppCompatActivity {
         // Recuperar usuario
         usuarioconectado = (Usuario) getIntent().getSerializableExtra("usuario");
 
-        // Referencias a los elementos
+        // Referencias a los elementos (RESTAURADO)
         TextView textoincio = findViewById(R.id.textViewAmigos);
         Button botoncuenta = findViewById(R.id.botoncuenta); 
         View botonride = findViewById(R.id.botonRide);
         View botoncombustible = findViewById(R.id.botoncombustible);
-        View botonMisCoches = findViewById(R.id.button3); // Ahora es un Layout
+        View botonMisCoches = findViewById(R.id.button3); 
         ImageButton logoButton = findViewById(R.id.logoButton);
         ImageButton homeButton = findViewById(R.id.homeButton);
         ImageButton gasofaButton = findViewById(R.id.gasofaButton);
         Button botonSocial = findViewById(R.id.botonsocial);
+        // AÑADIDO: Botón de historial
+        ImageButton historialButton = findViewById(R.id.historialButton);
 
 
         // --- Referencias internas de los previews ---
         circlePreview = findViewById(R.id.mainCircleState);
         textPercentPreview = findViewById(R.id.mainPercentText);
         textListaCochesPreview = findViewById(R.id.listaCochesPreview);
-        // --- FIN ---
         
-        // --- CORRECCIÓN SCROLL ---
+        // --- Corrección de Scroll ---
         ScrollView scrollView = findViewById(R.id.scrollView2);
-        
         textoincio.setFocusable(true);
         textoincio.setFocusableInTouchMode(true);
 
@@ -67,12 +67,9 @@ public class MainActivity extends AppCompatActivity {
                 textoincio.clearFocus(); 
             }
         });
-        // --- FIN CORRECCIÓN ---
 
         if (usuarioconectado != null) {
             textoincio.setText("Hola " + usuarioconectado.nombre);
-            
-            // Actualizar previews
             actualizarGraficoCombustible();
             actualizarListaCochesPreview();
         }
@@ -109,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Listener de botón Social (RESTAURADO)
         botonSocial.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -117,9 +115,6 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
-
-
-
 
         botoncombustible.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -130,7 +125,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // Click en la preview de "Mis Coches"
         botonMisCoches.setOnClickListener(new View.OnClickListener() {
              @Override
             public void onClick(View view) {
@@ -164,21 +158,27 @@ public class MainActivity extends AppCompatActivity {
                 // No hace nada, ya estamos en Home
             }
         });
+
+        // Listener del botón de Historial (AÑADIDO)
+        historialButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, HistorialActivity.class);
+                intent.putExtra("usuario", usuarioconectado);
+                startActivity(intent);
+            }
+        });
     }
 
     // --- MÉTODOS PARA ACTUALIZAR PREVIEWS ---
     private void actualizarGraficoCombustible() {
         if (usuarioconectado == null || circlePreview == null || textPercentPreview == null) return;
-
         Usuario.Car coche = usuarioconectado.cochemasusado();
-
         if (coche != null) {
             int porcentaje = coche.getCapacidadactual();
             if (porcentaje == -1) porcentaje = 0;
-
             circlePreview.setState(porcentaje, false);
             int color = interpolateColor(Color.RED, Color.GREEN, porcentaje / 100f);
-
             textPercentPreview.setText(porcentaje + "%");
             textPercentPreview.setTextColor(color);
         } else {
@@ -189,16 +189,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void actualizarListaCochesPreview() {
         if (usuarioconectado == null || textListaCochesPreview == null) return;
-
         List<Usuario.Car> coches = usuarioconectado.getCoches();
-
         if (coches.isEmpty()) {
             textListaCochesPreview.setText("No tienes coches añadidos");
             return;
         }
-
         StringBuilder sb = new StringBuilder();
-        // Mostramos un máximo de 3 coches para que quepa
         for (int i = 0; i < Math.min(coches.size(), 3); i++) {
             Usuario.Car coche = coches.get(i);
             sb.append("• ").append(coche.getBrand()).append(" ").append(coche.getModel()).append("\n");
@@ -206,7 +202,6 @@ public class MainActivity extends AppCompatActivity {
         if(coches.size() > 3){
             sb.append("...");
         }
-
         textListaCochesPreview.setText(sb.toString().trim());
     }
 
@@ -216,8 +211,7 @@ public class MainActivity extends AppCompatActivity {
         int b = Color.blue(start) + Math.round((Color.blue(end) - Color.blue(start)) * fraction);
         return Color.rgb(r, g, b);
     }
-    // --- FIN ---
-
+    
     private void logoutUser() {
         Intent intent = new Intent(MainActivity.this, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

@@ -34,18 +34,21 @@ public class DepositoActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_deposito);
 
-        // Instanciar SaveManager una sola vez
         saveManager = new SaveManager(this);
 
-        // Referencias UI
+        // --- Referencias UI ---
         circle = findViewById(R.id.circleState);
         textoporcentaje = findViewById(R.id.textViewporcentaje);
         Button boton_llenado = findViewById(R.id.button_full);
+        Spinner spinnercoches = findViewById(R.id.spinnercoches);
+        
+        // --- Barra de navegación ---
         ImageButton logoButton = findViewById(R.id.logoButton);
         ImageButton homeButton = findViewById(R.id.homeButton);
-        Spinner spinnercoches = findViewById(R.id.spinnercoches);
+        ImageButton gasofaButton = findViewById(R.id.gasofaButton);
+        ImageButton historialButton = findViewById(R.id.historialButton); // AÑADIDO
 
-        // Usuario conectado
+        // Usuario y coche
         usuarioconectado = (Usuario) getIntent().getSerializableExtra("usuario");
         cocheseleccionado = cochepordefecto();
 
@@ -57,7 +60,6 @@ public class DepositoActivity extends AppCompatActivity {
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             spinnercoches.setAdapter(adapter);
 
-            // Seleccionar el coche por defecto
             int indicePorDefecto = 0;
             for (int i = 0; i < listaCoches.size(); i++) {
                 if (listaCoches.get(i).equals(cocheseleccionado)) {
@@ -71,8 +73,6 @@ public class DepositoActivity extends AppCompatActivity {
                 @Override
                 public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                     cocheseleccionado = listaCoches.get(position);
-
-                    // Si capacidad no está definida, pedirla
                     if (cocheseleccionado.getcapacidaddeposito() == -1) {
                         pedirCapacidad(cocheseleccionado);
                     } else {
@@ -80,43 +80,35 @@ public class DepositoActivity extends AppCompatActivity {
                         animarCircularYTexto(0, llenado);
                     }
                 }
-
                 @Override
                 public void onNothingSelected(AdapterView<?> parent) {}
             });
         }
 
-        // Botón logo -> MisCochesActivity
-        logoButton.setOnClickListener(view -> {
-            Intent intent = new Intent(DepositoActivity.this, MisCochesActivity.class);
-            intent.putExtra("usuario", usuarioconectado);
-            startActivity(intent);
-        });
-
-        // Botón Home -> MainActivity
-        homeButton.setOnClickListener(view -> {
-            Intent intent = new Intent(DepositoActivity.this, MainActivity.class);
-            intent.putExtra("usuario", usuarioconectado);
-            startActivity(intent);
-        });
+        // --- Listeners de Navegación ---
+        logoButton.setOnClickListener(view -> navigateTo(MisCochesActivity.class));
+        homeButton.setOnClickListener(view -> navigateTo(MainActivity.class));
+        gasofaButton.setOnClickListener(view -> { /* Ya estamos aquí */ });
+        historialButton.setOnClickListener(view -> navigateTo(HistorialActivity.class)); // AÑADIDO
 
         // Botón llenar al 100%
         boton_llenado.setOnClickListener(v -> {
             int anterior = llenado;
             llenado = 100;
             cocheseleccionado.setCapacidadactual(llenado);
-
-            // Guardar cambios
             saveManager.actualizarUsuario(usuarioconectado);
-
             animarCircularYTexto(anterior, llenado);
         });
 
-        // Animación inicial
         animarCircularYTexto(0, llenado);
     }
 
-    // Obtener coche más usado
+    private void navigateTo(Class<?> destination) {
+        Intent intent = new Intent(DepositoActivity.this, destination);
+        intent.putExtra("usuario", usuarioconectado);
+        startActivity(intent);
+    }
+
     private Usuario.Car cochepordefecto() {
         if (usuarioconectado != null) {
             return usuarioconectado.cochemasusado();
@@ -124,7 +116,6 @@ public class DepositoActivity extends AppCompatActivity {
         return null;
     }
 
-    // Pedir capacidad del depósito
     private void pedirCapacidad(Usuario.Car coche) {
         View view = getLayoutInflater().inflate(R.layout.dialog_input, null);
         TextView title = view.findViewById(R.id.dialogTitle);
@@ -159,16 +150,13 @@ public class DepositoActivity extends AppCompatActivity {
                     llenado = cocheseleccionado.getCapacidadactual();
                 }
 
-                // Guardar cambios
                 saveManager.actualizarUsuario(usuarioconectado);
-
                 dialog.dismiss();
                 pedirPorcentaje();
             }
         });
     }
 
-    // Pedir porcentaje actual
     private void pedirPorcentaje() {
         View view = getLayoutInflater().inflate(R.layout.dialog_input, null);
         TextView title = view.findViewById(R.id.dialogTitle);
@@ -201,23 +189,20 @@ public class DepositoActivity extends AppCompatActivity {
                 llenado = porcentaje;
                 cocheseleccionado.setCapacidadactual(llenado);
 
-                // Guardar cambios
                 saveManager.actualizarUsuario(usuarioconectado);
-
                 animarCircularYTexto(anterior, llenado);
                 dialog.dismiss();
             }
         });
     }
 
-    // Animación sincronizada de círculo y TextView
     private void animarCircularYTexto(int inicio, int fin) {
         ValueAnimator animator = ValueAnimator.ofInt(inicio, fin);
         animator.setDuration(800);
 
         animator.addUpdateListener(animation -> {
             int valor = (int) animation.getAnimatedValue();
-            circle.setState(valor, false); // false: animación interna desactivada
+            circle.setState(valor, false);
             int color = interpolateColor(Color.RED, Color.GREEN, valor / 100f);
             textoporcentaje.setText(valor + "%");
             textoporcentaje.setTextColor(color);
@@ -226,7 +211,6 @@ public class DepositoActivity extends AppCompatActivity {
         animator.start();
     }
 
-    // Interpolación de color
     private int interpolateColor(int start, int end, float fraction) {
         int r = Color.red(start) + Math.round((Color.red(end) - Color.red(start)) * fraction);
         int g = Color.green(start) + Math.round((Color.green(end) - Color.green(start)) * fraction);

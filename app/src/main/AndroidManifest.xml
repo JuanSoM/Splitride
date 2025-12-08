@@ -31,6 +31,7 @@ package="com.example.consumocarros">
     <activity android:name=".MisCochesActivity" />
     <activity android:name=".DepositoActivity" />
     <activity android:name=".SocialActivity" />
+    <activity android:name=".HistorialActivity" /> <!-- AÑADIDO -->
 
     <meta-data
         android:name="preloaded_fonts"
