@@ -4,14 +4,14 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.view.MenuItem; 
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.PopupMenu; 
-import android.widget.ScrollView; 
+import android.widget.PopupMenu;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.ImageButton;
-import android.widget.Toast; 
+import android.widget.Toast;
 
 import java.util.List;
 
@@ -36,10 +36,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Referencias a los elementos (RESTAURADO)
         TextView textoincio = findViewById(R.id.textViewAmigos);
-        Button botoncuenta = findViewById(R.id.botoncuenta); 
+        Button botoncuenta = findViewById(R.id.botoncuenta);
         View botonride = findViewById(R.id.botonRide);
         View botoncombustible = findViewById(R.id.botoncombustible);
-        View botonMisCoches = findViewById(R.id.button3); 
+        View botonMisCoches = findViewById(R.id.button3);
         ImageButton logoButton = findViewById(R.id.logoButton);
         ImageButton homeButton = findViewById(R.id.homeButton);
         ImageButton gasofaButton = findViewById(R.id.gasofaButton);
@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
         circlePreview = findViewById(R.id.mainCircleState);
         textPercentPreview = findViewById(R.id.mainPercentText);
         textListaCochesPreview = findViewById(R.id.listaCochesPreview);
-        
+
         // --- Corrección de Scroll ---
         ScrollView scrollView = findViewById(R.id.scrollView2);
         textoincio.setFocusable(true);
@@ -63,8 +63,8 @@ public class MainActivity extends AppCompatActivity {
             public void run() {
                 scrollView.fullScroll(View.FOCUS_UP);
                 scrollView.smoothScrollTo(0,0);
-                textoincio.requestFocus(); 
-                textoincio.clearFocus(); 
+                textoincio.requestFocus();
+                textoincio.clearFocus();
             }
         });
 
@@ -126,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         botonMisCoches.setOnClickListener(new View.OnClickListener() {
-             @Override
+            @Override
             public void onClick(View view) {
                 Intent intent = new Intent(MainActivity.this, MisCochesActivity.class);
                 intent.putExtra("usuario", usuarioconectado);
@@ -211,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
         int b = Color.blue(start) + Math.round((Color.blue(end) - Color.blue(start)) * fraction);
         return Color.rgb(r, g, b);
     }
-    
+
     private void logoutUser() {
         Intent intent = new Intent(MainActivity.this, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
