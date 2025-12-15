@@ -28,6 +28,9 @@ public class DepositoActivity extends AppCompatActivity {
     private CircularStateView circle;
     private TextView textoporcentaje;
     private SaveManager saveManager;
+    
+    // Variable para controlar la visualización (true = %, false = Litros)
+    private boolean mostrarEnPorcentaje = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,11 +49,17 @@ public class DepositoActivity extends AppCompatActivity {
         ImageButton logoButton = findViewById(R.id.logoButton);
         ImageButton homeButton = findViewById(R.id.homeButton);
         ImageButton gasofaButton = findViewById(R.id.gasofaButton);
-        ImageButton historialButton = findViewById(R.id.historialButton); // AÑADIDO
+        ImageButton historialButton = findViewById(R.id.historialButton);
 
         // Usuario y coche
         usuarioconectado = (Usuario) getIntent().getSerializableExtra("usuario");
         cocheseleccionado = cochepordefecto();
+
+        // --- Listener para cambiar entre % y Litros al pulsar el texto ---
+        textoporcentaje.setOnClickListener(v -> {
+            mostrarEnPorcentaje = !mostrarEnPorcentaje; // Alternar modo
+            actualizarTextoDisplay(llenado); // Actualizar visualización inmediatamente
+        });
 
         if (usuarioconectado != null && usuarioconectado.getCoches() != null) {
             List<Usuario.Car> listaCoches = usuarioconectado.getCoches();
@@ -89,7 +98,7 @@ public class DepositoActivity extends AppCompatActivity {
         logoButton.setOnClickListener(view -> navigateTo(MisCochesActivity.class));
         homeButton.setOnClickListener(view -> navigateTo(MainActivity.class));
         gasofaButton.setOnClickListener(view -> { /* Ya estamos aquí */ });
-        historialButton.setOnClickListener(view -> navigateTo(HistorialActivity.class)); // AÑADIDO
+        historialButton.setOnClickListener(view -> navigateTo(HistorialActivity.class));
 
         // Botón llenar al 100%
         boton_llenado.setOnClickListener(v -> {
@@ -203,12 +212,30 @@ public class DepositoActivity extends AppCompatActivity {
         animator.addUpdateListener(animation -> {
             int valor = (int) animation.getAnimatedValue();
             circle.setState(valor, false);
-            int color = interpolateColor(Color.RED, Color.GREEN, valor / 100f);
-            textoporcentaje.setText(valor + "%");
-            textoporcentaje.setTextColor(color);
+            
+            // Actualizar color y texto usando la nueva lógica
+            actualizarTextoDisplay(valor);
         });
 
         animator.start();
+    }
+
+    // Nuevo método para gestionar qué se muestra (% o Litros)
+    private void actualizarTextoDisplay(int porcentaje) {
+        int color = interpolateColor(Color.RED, Color.GREEN, porcentaje / 100f);
+        textoporcentaje.setTextColor(color);
+
+        if (mostrarEnPorcentaje) {
+            textoporcentaje.setText(porcentaje + "%");
+        } else {
+            if (cocheseleccionado != null && cocheseleccionado.getcapacidaddeposito() > 0) {
+                // Calcular litros: (Porcentaje / 100) * Capacidad Total
+                double litros = (porcentaje / 100.0) * cocheseleccionado.getcapacidaddeposito();
+                textoporcentaje.setText(String.format("%.1f L", litros));
+            } else {
+                textoporcentaje.setText("0 L");
+            }
+        }
     }
 
     private int interpolateColor(int start, int end, float fraction) {
