@@ -1,30 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:padding="20dp"
-    android:background="@color/black"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/dialog_background">
 
-    <EditText
-        android:id="@+id/inputBusqueda"
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Marca, modelo o año"
+        android:text="Añadir Vehículo"
+        android:textSize="20sp"
+        android:textStyle="bold"
         android:textColor="@android:color/white"
-        android:textColorHint="#AAAAAA"
-        android:inputType="text"
-        android:backgroundTint="@android:color/white"
-        android:layout_marginBottom="10dp" />
+        android:layout_marginBottom="16dp"/>
 
-    <ListView
-        android:id="@+id/listaSugerencias"
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilYear"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
         android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:divider="@android:color/white"
-        android:dividerHeight="1dp"
-        android:background="#F5F5F5"
-        android:listSelector="@android:color/darker_gray"
-        android:cacheColorHint="@android:color/transparent" />
+        android:layout_height="wrap_content"
+        android:hint="Año"
+        android:textColorHint="#AAAAAA"
+        app:boxStrokeColor="@color/white"
+        app:boxStrokeWidth="1dp"
+        android:layout_marginBottom="8dp">
+
+        <AutoCompleteTextView
+            android:id="@+id/autoCompleteYear"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="none"
+            android:textColor="@color/black"
+            android:padding="12dp"
+            android:background="@drawable/rounded_input"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilMake"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Marca"
+        android:enabled="false"
+        android:textColorHint="#AAAAAA"
+        android:layout_marginBottom="8dp">
+
+        <AutoCompleteTextView
+            android:id="@+id/autoCompleteMake"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="@color/black"
+            android:padding="12dp"
+            android:background="@drawable/rounded_input"/>
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/tilModel"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Modelo"
+        android:enabled="false"
+        android:textColorHint="#AAAAAA">
+
+        <AutoCompleteTextView
+            android:id="@+id/autoCompleteModel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:textColor="@color/black"
+            android:padding="12dp"
+            android:background="@drawable/rounded_input"/>
+    </com.google.android.material.textfield.TextInputLayout>
 
 </LinearLayout>

@@ -3,287 +3,126 @@ package com.example.consumocarros
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.w3c.dom.Document
-import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Locale
 import javax.xml.parsers.DocumentBuilderFactory
-import kotlin.math.round
 
-// NUEVA Data Class para empaquetar la respuesta
 data class ConsumptionData(val city: String, val highway: String, val avg: String)
 
 object ApiHelper {
 
-    // FUNCIÓN ORIGINAL (la dejamos como estaba por si se usa en otro sitio)
-    fun getVehicleData(make: String, model: String, year: String): String {
-        return try {
-            val optionsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year=$year&make=$make&model=$model"
-            val vehicleId = getFirstVehicleId(optionsUrl)
-                ?: return "No se encontró información del vehículo."
+    // --- 1. OBTENER AÑOS (Generamos la lista localmente) ---
+    // La API cubre desde 1984 hasta hoy.
+    fun getYearsList(): List<String> {
+        val currentYear = 2025 // Puedes actualizar esto dinámicamente
+        val years = mutableListOf<String>()
+        for (y in currentYear downTo 1984) {
+            years.add(y.toString())
+        }
+        return years
+    }
 
+    // --- 2. OBTENER MARCAS (Desde API Oficial) ---
+    // Endpoint: https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year=2015
+    suspend fun getMakes(year: String): List<String> = withContext(Dispatchers.IO) {
+        val url = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year=$year"
+        parseXmlList(url)
+    }
+
+    // --- 3. OBTENER MODELOS (Desde API Oficial) ---
+    // Endpoint: https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=2015&make=Honda
+    suspend fun getModels(year: String, make: String): List<String> = withContext(Dispatchers.IO) {
+        // Encodeamos la marca por si tiene espacios (ej: Aston Martin -> Aston%20Martin)
+        val encMake = java.net.URLEncoder.encode(make, "UTF-8").replace("+", "%20")
+        val url = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=$year&make=$encMake"
+        parseXmlList(url)
+    }
+
+    // --- 4. OBTENER CONSUMO (Lógica compleja de ID) ---
+    suspend fun getVehicleConsumption(year: String, make: String, model: String): ConsumptionData = withContext(Dispatchers.IO) {
+        try {
+            val encMake = java.net.URLEncoder.encode(make, "UTF-8").replace("+", "%20")
+            val encModel = java.net.URLEncoder.encode(model, "UTF-8").replace("+", "%20")
+
+            // PASO A: Obtener el ID del vehículo (Vehicle ID)
+            // A veces un modelo tiene varias versiones (Automático, Manual...). Cogemos la primera opción.
+            val optionsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year=$year&make=$encMake&model=$encModel"
+            val idDoc = getXmlDocument(optionsUrl)
+
+            // Buscamos la etiqueta <value> que contiene el ID
+            val idNode = idDoc?.getElementsByTagName("value")?.item(0)
+            val vehicleId = idNode?.textContent
+
+            if (vehicleId == null) {
+                return@withContext ConsumptionData("N/A", "N/A", "N/A")
+            }
+
+            // PASO B: Obtener detalles con el ID
             val dataUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/$vehicleId"
-            val doc = getXmlDocument(dataUrl)
+            val doc = getXmlDocument(dataUrl) ?: return@withContext ConsumptionData("N/A", "N/A", "N/A")
 
+            // Extraemos MPG (Millas por Galón)
             val cityMpg = doc.getElementsByTagName("city08").item(0)?.textContent?.toDoubleOrNull() ?: 0.0
             val highwayMpg = doc.getElementsByTagName("highway08").item(0)?.textContent?.toDoubleOrNull() ?: 0.0
             val avgMpg = (cityMpg + highwayMpg) / 2
 
+            // Convertimos a Km/L
             val cityKmpl = mpgToKmpl(cityMpg)
             val highwayKmpl = mpgToKmpl(highwayMpg)
             val avgKmpl = mpgToKmpl(avgMpg)
 
-            """
-                Consumo estimado de $make $model $year:
-                - Ciudad: ${String.format(Locale.US, "%.2f", cityKmpl)} km/L
-                - Autovía: ${String.format(Locale.US, "%.2f", highwayKmpl)} km/L
-                - Promedio: ${String.format(Locale.US, "%.2f", avgKmpl)} km/L
-            """.trimIndent()
+            // Formateamos
+            val cStr = String.format(Locale.US, "%.2f", cityKmpl)
+            val hStr = String.format(Locale.US, "%.2f", highwayKmpl)
+            val aStr = String.format(Locale.US, "%.2f", avgKmpl)
 
-        } catch (e: Exception) {
-            "Error: ${e.message}"
-        }
-    }
-
-    // --- INICIO DE CÓDIGO NUEVO ---
-    /**
-     * Obtiene los datos de consumo de la API.
-     * Esta función es 'suspend' y debe llamarse desde una Coroutine.
-     * Devuelve "N/A" si no encuentra datos o hay un error.
-     */
-    suspend fun getVehicleConsumption(make: String, model: String, year: String): ConsumptionData = withContext(Dispatchers.IO) {
-        try {
-            val optionsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year=$year&make=$make&model=$model"
-            val vehicleId = getFirstVehicleId(optionsUrl)
-                ?: return@withContext ConsumptionData("N/A", "N/A", "N/A")
-
-            val dataUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/$vehicleId"
-            val doc = getXmlDocument(dataUrl)
-
-            val cityMpgNode = doc.getElementsByTagName("city08").item(0)
-            val highwayMpgNode = doc.getElementsByTagName("highway08").item(0)
-
-            // Si falta alguno de los datos clave, devolvemos N/A
-            if (cityMpgNode == null || highwayMpgNode == null) {
-                return@withContext ConsumptionData("N/A", "N/A", "N/A")
-            }
-
-            val cityMpg = cityMpgNode.textContent.toDoubleOrNull() ?: 0.0
-            val highwayMpg = highwayMpgNode.textContent.toDoubleOrNull() ?: 0.0
-
-            // Si los valores son 0, la API no tiene datos
-            if (cityMpg == 0.0 || highwayMpg == 0.0) {
-                return@withContext ConsumptionData("N/A", "N/A", "N/A")
-            }
-
-            val avgMpg = (cityMpg + highwayMpg) / 2
-
-            // USAR LOCALE.US PARA EVITAR COMAS
-            val cityKmpl = String.format(Locale.US, "%.2f", mpgToKmpl(cityMpg))
-            val highwayKmpl = String.format(Locale.US, "%.2f", mpgToKmpl(highwayMpg))
-            val avgKmpl = String.format(Locale.US, "%.2f", mpgToKmpl(avgMpg))
-
-            return@withContext ConsumptionData(cityKmpl, highwayKmpl, avgKmpl)
+            return@withContext ConsumptionData(cStr, hStr, aStr)
 
         } catch (e: Exception) {
             e.printStackTrace()
-            // Si cualquier cosa falla (red, parseo...), devolvemos N/A
-            return@withContext ConsumptionData("N/A", "N/A", "N/A")
-        }
-    }
-    // --- FIN DE CÓDIGO NUEVO ---
-
-    private fun getXmlDocument(urlStr: String): Document {
-        val url = URL(urlStr)
-        val conn = url.openConnection() as HttpURLConnection
-        conn.requestMethod = "GET"
-        val inputStream = conn.inputStream
-        val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(inputStream)
-        conn.disconnect()
-        return doc
-    }
-
-    // (Resto de funciones: getFirstVehicleId, mpgToKmpl, getSuggestions, etc... van aquí debajo)
-    // ... (El resto de tu ApiHelper.kt)
-    private fun getFirstVehicleId(urlStr: String): String? {
-        val doc = getXmlDocument(urlStr)
-        val nodeList = doc.getElementsByTagName("value")
-        return if (nodeList.length > 0) nodeList.item(0).textContent else null
-    }
-
-    private fun mpgToKmpl(mpg: Double): Double {
-        return mpg * 1.60934 / 3.78541
-    }
-
-    private val makeCache = mutableMapOf<Int, List<String>>()
-    private val lock = Any()
-
-    fun getSuggestions(query: String): List<String> {
-        val q = query.trim()
-        if (q.isEmpty()) return emptyList()
-
-        val tokens = q.split("\\s+".toRegex())
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .map { it.lowercase() }
-
-        if (tokens.isEmpty()) return emptyList()
-
-        val suggestions = mutableListOf<String>()
-        val seen = mutableSetOf<String>() // evitar duplicados
-
-        // Rango razonable: últimos 11 años
-        for (year in 2025 downTo 2015) {
-            if (suggestions.size >= 10) break
-
-            val makes = getMakesForYear(year) ?: continue
-
-            for (make in makes) {
-                val makeLower = make.lowercase()
-
-                // 1. La marca debe contener el primer token
-                if (!containsToken(makeLower, tokens[0])) continue
-
-                // Si solo hay marca → sugerir modelos populares
-                if (tokens.size == 1) {
-                    addPopularModels(make, year, suggestions, seen)
-                    continue
-                }
-
-                // 2. Buscar modelos que contengan el segundo token
-                val models = getModelsForMakeYear(make, year) ?: continue
-                for (model in models) {
-                    val modelLower = model.lowercase()
-                    if (!containsToken(modelLower, tokens[1])) continue
-
-                    // Caso: marca + modelo → sugerir años
-                    if (tokens.size == 2) {
-                        addYearsForModel(make, model, year, tokens, suggestions, seen)
-                        continue
-                    }
-
-                    // Caso: marca + modelo + año → filtrar años
-                    if (tokens.size >= 3) {
-                        val yearToken = tokens[2]
-                        val years = getYearsForMakeModel(make, model) ?: continue
-                        for (y in years) {
-                            if (y.startsWith(yearToken, ignoreCase = true)) {
-                                addSuggestion("$make $model $y", suggestions, seen)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Filtro final: debe contener TODOS los tokens
-        return suggestions
-            .filter { sug ->
-                val lower = sug.lowercase()
-                tokens.all { token -> lower.contains(token) }
-            }
-            .take(10)
-    }
-
-    // --- FUNCIONES AUXILIARES ---
-
-    private fun getMakesForYear(year: Int): List<String>? = synchronized(lock) {
-        makeCache[year] ?: run {
-            val url = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year=$year"
-            try {
-                val doc = getXmlDocument(url)
-                val nodes = doc.getElementsByTagName("value")
-                val list = mutableListOf<String>()
-                for (i in 0 until nodes.length.coerceAtMost(50)) { // limitar
-                    nodes.item(i)?.textContent?.let { list.add(it) }
-                }
-                makeCache[year] = list
-                list
-            } catch (e: Exception) {
-                null
-            }
+            return@withContext ConsumptionData("0.0", "0.0", "0.0")
         }
     }
 
-    private fun getModelsForMakeYear(make: String, year: Int): List<String>? {
-        val url = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=$year&make=$make"
-        return try {
-            val doc = getXmlDocument(url)
-            val nodes = doc.getElementsByTagName("value")
-            val list = mutableListOf<String>()
-            for (i in 0 until nodes.length.coerceAtMost(30)) {
-                nodes.item(i)?.textContent?.let { list.add(it) }
-            }
-            list
-        } catch (e: Exception) {
-            null
-        }
-    }
+    // --- AUXILIARES ---
 
-    private fun getYearsForMakeModel(make: String, model: String): List<String>? {
-        val url = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/year?make=$make&model=$model"
-        return try {
-            val doc = getXmlDocument(url)
-            val nodes = doc.getElementsByTagName("value")
-            val list = mutableListOf<String>()
+    // Descarga y parsea una lista simple de opciones XML (<menuItem><text>...</text><value>...</value></menuItem>)
+    private fun parseXmlList(urlStr: String): List<String> {
+        val list = mutableListOf<String>()
+        try {
+            val doc = getXmlDocument(urlStr) ?: return emptyList()
+            val nodes = doc.getElementsByTagName("value") // En los menús, 'value' es el nombre (Make/Model)
+
             for (i in 0 until nodes.length) {
                 nodes.item(i)?.textContent?.let { list.add(it) }
             }
-            list.sortedDescending() // más nuevos primero
         } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return list
+    }
+
+    // Conexión HTTP genérica que devuelve un Documento XML
+    private fun getXmlDocument(urlStr: String): Document? {
+        return try {
+            val url = URL(urlStr)
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.connectTimeout = 5000
+
+            val factory = DocumentBuilderFactory.newInstance()
+            val builder = factory.newDocumentBuilder()
+            val doc = builder.parse(conn.inputStream)
+            conn.disconnect()
+            doc
+        } catch (e: Exception) {
+            e.printStackTrace()
             null
         }
     }
 
-    private fun addPopularModels(make: String, year: Int, suggestions: MutableList<String>, seen: MutableSet<String>) {
-        val models = getModelsForMakeYear(make, year) ?: return
-        // Tomar hasta 3 modelos (puedes ordenar por popularidad si tienes datos)
-        models.take(3).forEach { model ->
-            addSuggestion("$make $model $year", suggestions, seen)
-        }
-    }
-
-    private fun addYearsForModel(make: String, model: String, currentYear: Int, tokens: List<String>, suggestions: MutableList<String>, seen: MutableSet<String>) {
-        val years = getYearsForMakeModel(make, model) ?: return
-        // Filtrar años que contengan el token (si hay) o tomar más recientes
-        val filtered = if (tokens.size > 2) {
-            years.filter { it.startsWith(tokens[2], ignoreCase = true) }
-        } else {
-            years.sortedDescending(). distinct().take(5)
-        }
-        filtered.forEach { y ->
-            addSuggestion("$make $model $y", suggestions, seen)
-        }
-    }
-
-    private fun addSuggestion(text: String, suggestions: MutableList<String>, seen: MutableSet<String>) {
-        if (text !in seen && suggestions.size < 15) { // buffer
-            seen.add(text)
-            suggestions.add(text)
-        }
-    }
-
-    private fun containsToken(text: String, token: String): Boolean {
-        return text.startsWith(token) || fuzzyMatch(text, token)
-    }
-
-    // Búsqueda difusa simple: permite 1 error
-    private fun fuzzyMatch(text: String, token: String): Boolean {
-        if (token.length > text.length + 1) return false
-        var errors = 0
-        var i = 0
-        var j = 0
-        while (i < token.length && j < text.length) {
-            if (token[i].lowercaseChar() != text[j].lowercaseChar()) {
-                errors++
-                if (errors > 1) return false
-                j++ // permite omitir un carácter
-            } else {
-                i++
-                j++
-            }
-        }
-        return i == token.length
+    private fun mpgToKmpl(mpg: Double): Double {
+        return mpg * 0.425144
     }
 }
