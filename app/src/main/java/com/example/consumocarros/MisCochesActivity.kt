@@ -25,16 +25,17 @@ class MisCochesActivity : AppCompatActivity() {
         saveManager = SaveManager(this)
         usuario = intent.getSerializableExtra("usuario") as? Usuario
 
-        // UI References
+        // Referencias UI principales
         val logoButton = findViewById<ImageButton>(R.id.logoButton)
         val homeButton = findViewById<ImageButton>(R.id.homeButton)
         val addCarButton = findViewById<Button>(R.id.botonAnadir)
         val gasofaButton = findViewById<ImageButton>(R.id.gasofaButton)
         carsContainer = findViewById(R.id.contenedorCoches)
 
+        // Cargar coches guardados al iniciar
         loadCarsFromUser()
 
-        // Navegación
+        // --- NAVEGACIÓN ---
         homeButton.setOnClickListener {
             val intent = Intent(this, MainActivity::class.java)
             intent.putExtra("usuario", usuario)
@@ -48,7 +49,7 @@ class MisCochesActivity : AppCompatActivity() {
         }
         logoButton.setOnClickListener { /* Nada */ }
 
-        // Botón Añadir
+        // Botón para abrir el diálogo
         addCarButton.setOnClickListener { showAddCarDialog() }
     }
 
@@ -56,19 +57,19 @@ class MisCochesActivity : AppCompatActivity() {
         val inflater = LayoutInflater.from(this)
         val dialogView = inflater.inflate(R.layout.dialogo_anadir_coche, null)
 
-        // Referencias a inputs
-        val tilYear = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilYear)
+        // Referencias a los campos del diálogo
         val tilMake = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilMake)
         val tilModel = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilModel)
+        val tilYear = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilYear)
 
-        val autoYear = dialogView.findViewById<AutoCompleteTextView>(R.id.autoCompleteYear)
         val autoMake = dialogView.findViewById<AutoCompleteTextView>(R.id.autoCompleteMake)
         val autoModel = dialogView.findViewById<AutoCompleteTextView>(R.id.autoCompleteModel)
+        val autoYear = dialogView.findViewById<AutoCompleteTextView>(R.id.autoCompleteYear)
 
-        // Variables temporales
-        var selectedYear = ""
+        // Variables para guardar la selección
         var selectedMake = ""
         var selectedModel = ""
+        var selectedYear = ""
 
         val dialog = AlertDialog.Builder(this)
             .setView(dialogView)
@@ -78,62 +79,67 @@ class MisCochesActivity : AppCompatActivity() {
 
         dialog.show()
 
-        // Estilos
+        // --- ESTILOS DEL DIÁLOGO ---
+        dialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.WHITE)
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
         dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.WHITE)
-        dialog.window?.setBackgroundDrawableResource(R.drawable.dialog_background)
 
-        // PASO 1: CARGAR AÑOS (Localmente, es instantáneo)
-        val years = ApiHelper.getYearsList()
-        val adapterYears = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, years)
-        autoYear.setAdapter(adapterYears)
+        // Estado inicial: Solo Marca habilitada
+        tilModel.isEnabled = false
+        tilYear.isEnabled = false
 
-        // PASO 2: AL ELEGIR AÑO -> Cargar Marcas
-        autoYear.setOnItemClickListener { parent, _, position, _ ->
-            selectedYear = parent.getItemAtPosition(position) as String
+        // -----------------------------------------------------------
+        // ZONA DE CAMBIOS Y DIAGNÓSTICO (1. CARGAR MARCAS)
+        // -----------------------------------------------------------
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                // Mensaje 1: Iniciando conexión
+                Toast.makeText(this@MisCochesActivity, "Conectando al servidor...", Toast.LENGTH_SHORT).show()
 
-            // Resetear siguientes
-            selectedMake = ""
-            selectedModel = ""
-            autoMake.text.clear()
-            autoModel.text.clear()
-            tilModel.isEnabled = false
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+                val makes = ApiHelper.getMakes() // Llamada al servidor
 
-            // Activar y cargar Marcas
-            tilMake.isEnabled = true
-            autoMake.setText("Cargando...")
-            autoMake.isEnabled = false
+                if (makes.isEmpty()) {
+                    // Mensaje 2: Si la lista llega vacía
+                    Toast.makeText(this@MisCochesActivity, "⚠ Recibida lista VACÍA", Toast.LENGTH_LONG).show()
+                } else {
+                    // Mensaje 3: Éxito
+                    Toast.makeText(this@MisCochesActivity, "✅ Éxito: ${makes.size} marcas", Toast.LENGTH_SHORT).show()
 
-            CoroutineScope(Dispatchers.Main).launch {
-                val makes = ApiHelper.getMakes(selectedYear)
-                val adapter = ArrayAdapter(this@MisCochesActivity, android.R.layout.simple_dropdown_item_1line, makes)
-                autoMake.setAdapter(adapter)
+                    // CAMBIO DE VISIBILIDAD: Usamos 'select_dialog_item' que suele verse mejor en fondo negro/blanco
+                    val adapter = ArrayAdapter(this@MisCochesActivity, android.R.layout.select_dialog_item, makes)
+                    autoMake.setAdapter(adapter)
 
-                autoMake.text.clear()
-                autoMake.isEnabled = true
-                autoMake.showDropDown()
+                    // Aseguramos que salga con 1 letra
+                    autoMake.threshold = 1
+                }
+            } catch (e: Exception) {
+                // Mensaje 4: Error crítico
+                Toast.makeText(this@MisCochesActivity, "❌ Error: ${e.message}", Toast.LENGTH_LONG).show()
+                e.printStackTrace()
             }
         }
+        // -----------------------------------------------------------
 
-        // PASO 3: AL ELEGIR MARCA -> Cargar Modelos
+        // 2. AL ELEGIR MARCA -> Cargar Modelos
         autoMake.setOnItemClickListener { parent, _, position, _ ->
             selectedMake = parent.getItemAtPosition(position) as String
 
-            // Resetear siguiente
             selectedModel = ""
+            selectedYear = ""
             autoModel.text.clear()
+            autoYear.text.clear()
+            tilYear.isEnabled = false
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
 
-            // Activar y cargar Modelos
             tilModel.isEnabled = true
             autoModel.setText("Cargando...")
             autoModel.isEnabled = false
 
             CoroutineScope(Dispatchers.Main).launch {
-                val models = ApiHelper.getModels(selectedYear, selectedMake)
-                val adapter = ArrayAdapter(this@MisCochesActivity, android.R.layout.simple_dropdown_item_1line, models)
+                val models = ApiHelper.getModels(selectedMake)
+                // Aquí también aplicamos el cambio de diseño por si acaso
+                val adapter = ArrayAdapter(this@MisCochesActivity, android.R.layout.select_dialog_item, models)
                 autoModel.setAdapter(adapter)
 
                 autoModel.text.clear()
@@ -142,25 +148,43 @@ class MisCochesActivity : AppCompatActivity() {
             }
         }
 
-        // PASO 4: AL ELEGIR MODELO -> Activar Botón
+        // 3. AL ELEGIR MODELO -> Cargar Años
         autoModel.setOnItemClickListener { parent, _, position, _ ->
             selectedModel = parent.getItemAtPosition(position) as String
+
+            selectedYear = ""
+            autoYear.text.clear()
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
+
+            tilYear.isEnabled = true
+            autoYear.setText("...")
+            autoYear.isEnabled = false
+
+            CoroutineScope(Dispatchers.Main).launch {
+                val years = ApiHelper.getYears(selectedMake, selectedModel)
+                val adapter = ArrayAdapter(this@MisCochesActivity, android.R.layout.select_dialog_item, years)
+                autoYear.setAdapter(adapter)
+
+                autoYear.text.clear()
+                autoYear.isEnabled = true
+                autoYear.showDropDown()
+            }
+        }
+
+        // 4. AL ELEGIR AÑO -> Activar botón Añadir
+        autoYear.setOnItemClickListener { parent, _, position, _ ->
+            selectedYear = parent.getItemAtPosition(position) as String
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = true
         }
 
-        // PASO 5: GUARDAR
+        // 5. BOTÓN AÑADIR -> Obtener Consumo y Guardar
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Buscando..."
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).text = "Consultando..."
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).isEnabled = false
 
             CoroutineScope(Dispatchers.Main).launch {
-                // Llamamos a la API oficial para sacar el consumo
-                val consumption = ApiHelper.getVehicleConsumption(selectedYear, selectedMake, selectedModel)
-
-                // Si la API devuelve N/A, avisamos
-                if (consumption.avg == "N/A" || consumption.avg == "0.0") {
-                    Toast.makeText(this@MisCochesActivity, "Datos no disponibles para este modelo específico", Toast.LENGTH_LONG).show()
-                }
+                // Obtenemos los datos finales desde MySQL
+                val consumption = ApiHelper.getVehicleConsumption(selectedMake, selectedModel, selectedYear)
 
                 val newCar = Usuario.Car(
                     selectedMake, selectedModel, selectedYear,
@@ -178,9 +202,8 @@ class MisCochesActivity : AppCompatActivity() {
     }
 
     private fun addCarView(car: Usuario.Car) {
-        // ... (Este código es idéntico al que te pasé antes, el de la tarjeta negra) ...
-        // ... Cópialo del mensaje anterior para mantener el formato completo ...
         val card = TextView(this)
+
         val carText = "${car.brand} ${car.model} ${car.year}\n" +
                 "Ciudad: ${car.cityKmpl} km/L\n" +
                 "Carretera: ${car.highwayKmpl} km/L\n" +
@@ -190,6 +213,7 @@ class MisCochesActivity : AppCompatActivity() {
         card.text = carText
         card.textSize = 16f
         card.setPadding(30, 30, 30, 30)
+
         card.setBackgroundResource(R.drawable.rounded_menu)
         card.setTextColor(resources.getColor(android.R.color.white, theme))
 

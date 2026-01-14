@@ -19,14 +19,13 @@ public class Usuario implements Serializable {
     private String idUsuario;
     private static SecureRandom random = new SecureRandom();
 
-
     public Usuario(String contrasena, String usuario, String nombre, String apellidos) {
         this.contrasena = contrasena;
         this.usuario = usuario;
         this.nombre = nombre;
         this.apellidos = apellidos;
         this.coches = new ArrayList<>();
-        this.viajes = new ArrayList<>(); 
+        this.viajes = new ArrayList<>();
         this.listaAmigosIds = new ArrayList<>();
         this.idUsuario = this.generarIDUsuario();
     }
@@ -34,15 +33,16 @@ public class Usuario implements Serializable {
     // --- Métodos para Viajes ---
     public List<Viaje> getViajes() {
         if (viajes == null) {
-            viajes = new ArrayList<>(); // Defensa anti-null
+            viajes = new ArrayList<>();
         }
-        return viajes; 
+        return viajes;
     }
+
     public void agregarViaje(Viaje viaje) {
         if (viajes == null) {
             viajes = new ArrayList<>();
         }
-        this.viajes.add(viaje); 
+        this.viajes.add(viaje);
     }
     // --- FIN ---
 
@@ -71,6 +71,7 @@ public class Usuario implements Serializable {
     private String generarIDUsuario() {
         return new BigInteger(130, random).toString(32);
     }
+
     public String getContrasena() { return contrasena; }
     public void setContrasena(String contrasena) { this.contrasena = contrasena; }
 
@@ -83,9 +84,9 @@ public class Usuario implements Serializable {
     public String getApellidos() { return apellidos; }
     public void setApellidos(String apellidos) { this.apellidos = apellidos; }
 
-    public List<Car> getCoches() { 
+    public List<Car> getCoches() {
         if(coches == null) coches = new ArrayList<>();
-        return coches; 
+        return coches;
     }
 
     public void agregarCoche(Car coche) {
@@ -96,26 +97,29 @@ public class Usuario implements Serializable {
     public void eliminarCoche(Car coche) {
         if(coches != null) this.coches.remove(coche);
     }
+
     public void aumentaruso(Car coche){
         if(coches == null) return;
         for(Car rayo: this.coches){
+            // Nota: Para que esto funcione bien al 100%, Car debería implementar equals()
+            // Pero por ahora comparamos referencias u objetos
             if(rayo.equals(coche)){
                 rayo.vecesusado++;
                 break;
             }
         }
     }
+
     public Car cochemasusado(){
         if(coches == null || coches.isEmpty()) return null;
         Car piston = coches.get(0);
         for(Car rayo: this.coches){
-            if(piston.vecesusado<= rayo.vecesusado){
+            if(piston.vecesusado <= rayo.vecesusado){
                 piston = rayo;
             }
         }
         return piston;
     }
-
 
     @Override
     public String toString() {
@@ -153,18 +157,22 @@ public class Usuario implements Serializable {
         public long getTimestamp() { return timestamp; }
     }
 
-    // --- Clase Car ---
+    // --- Clase Car (YA ACTUALIZADA) ---
     public static class Car implements Serializable {
         private String brand;
         private String model;
         private String year;
+
+        // Estos son los 3 campos nuevos para guardar lo que viene de MySQL
         private String cityKmpl;
         private String highwayKmpl;
         private String avgKmpl;
+
         private int capacidaddeposito;
         private int capacidadactual;
         private int vecesusado;
 
+        // El constructor ya recibe los 6 parámetros. ¡Perfecto!
         public Car(String brand, String model, String year, String cityKmpl, String highwayKmpl, String avgKmpl) {
             this.brand = brand;
             this.model = model;
@@ -172,22 +180,28 @@ public class Usuario implements Serializable {
             this.cityKmpl = cityKmpl;
             this.highwayKmpl = highwayKmpl;
             this.avgKmpl = avgKmpl;
-            this.capacidaddeposito = -1;
+            this.capacidaddeposito = -1; // Valor por defecto
             this.vecesusado = 0;
             this.capacidadactual = -1;
         }
 
+        // Getters y Setters
         public int getCapacidadactual() { return capacidadactual; }
         public void setCapacidadactual(int capacidadactual) { this.capacidadactual = capacidadactual; }
+
         public String getBrand() { return brand; }
         public String getModel() { return model; }
         public String getYear() { return year; }
+
+        // Kotlin usará estos Getters automáticamente cuando llames a .cityKmpl
         public String getCityKmpl() { return cityKmpl; }
         public String getHighwayKmpl() { return highwayKmpl; }
         public String getAvgKmpl() { return avgKmpl; }
+
         public int getcapacidaddeposito() { return capacidaddeposito; }
-        public int getvecesusado() { return vecesusado; }
         public void setCapacidaddeposito(int capacidaddeposito) { this.capacidaddeposito = capacidaddeposito; }
+
+        public int getvecesusado() { return vecesusado; }
 
         @Override
         public String toString() {

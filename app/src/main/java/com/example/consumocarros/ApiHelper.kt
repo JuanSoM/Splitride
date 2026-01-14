@@ -2,127 +2,113 @@ package com.example.consumocarros
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.w3c.dom.Document
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.util.Locale
-import javax.xml.parsers.DocumentBuilderFactory
 
 data class ConsumptionData(val city: String, val highway: String, val avg: String)
 
 object ApiHelper {
 
-    // --- 1. OBTENER AÑOS (Generamos la lista localmente) ---
-    // La API cubre desde 1984 hasta hoy.
-    fun getYearsList(): List<String> {
-        val currentYear = 2025 // Puedes actualizar esto dinámicamente
-        val years = mutableListOf<String>()
-        for (y in currentYear downTo 1984) {
-            years.add(y.toString())
-        }
-        return years
+    // --- ¡CONFIRMA QUE ESTA SIGUE SIENDO TU URL DE NGROK ACTUAL! ---
+    // Si cerraste la terminal negra, esta URL habrá cambiado.
+    private const val BASE_URL_ROOT = "https://touristic-aniyah-nonsyntonically.ngrok-free.dev/api"
+
+    suspend fun getMakes(): List<String> = withContext(Dispatchers.IO) {
+        fetchList("$BASE_URL_ROOT/makes")
     }
 
-    // --- 2. OBTENER MARCAS (Desde API Oficial) ---
-    // Endpoint: https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year=2015
-    suspend fun getMakes(year: String): List<String> = withContext(Dispatchers.IO) {
-        val url = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/make?year=$year"
-        parseXmlList(url)
+    suspend fun getModels(make: String): List<String> = withContext(Dispatchers.IO) {
+        val encodedMake = URLEncoder.encode(make, "UTF-8")
+        fetchList("$BASE_URL_ROOT/models?make=$encodedMake")
     }
 
-    // --- 3. OBTENER MODELOS (Desde API Oficial) ---
-    // Endpoint: https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=2015&make=Honda
-    suspend fun getModels(year: String, make: String): List<String> = withContext(Dispatchers.IO) {
-        // Encodeamos la marca por si tiene espacios (ej: Aston Martin -> Aston%20Martin)
-        val encMake = java.net.URLEncoder.encode(make, "UTF-8").replace("+", "%20")
-        val url = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/model?year=$year&make=$encMake"
-        parseXmlList(url)
+    suspend fun getYears(make: String, model: String): List<String> = withContext(Dispatchers.IO) {
+        val encodedMake = URLEncoder.encode(make, "UTF-8")
+        val encodedModel = URLEncoder.encode(model, "UTF-8")
+        fetchList("$BASE_URL_ROOT/years?make=$encodedMake&model=$encodedModel")
     }
 
-    // --- 4. OBTENER CONSUMO (Lógica compleja de ID) ---
-    suspend fun getVehicleConsumption(year: String, make: String, model: String): ConsumptionData = withContext(Dispatchers.IO) {
+    suspend fun getVehicleConsumption(make: String, model: String, year: String): ConsumptionData = withContext(Dispatchers.IO) {
+        // En consumo dejamos el try-catch suave, pero añadimos los headers por si acaso
         try {
-            val encMake = java.net.URLEncoder.encode(make, "UTF-8").replace("+", "%20")
-            val encModel = java.net.URLEncoder.encode(model, "UTF-8").replace("+", "%20")
+            val encMake = URLEncoder.encode(make, "UTF-8")
+            val encModel = URLEncoder.encode(model, "UTF-8")
+            val encYear = URLEncoder.encode(year, "UTF-8")
 
-            // PASO A: Obtener el ID del vehículo (Vehicle ID)
-            // A veces un modelo tiene varias versiones (Automático, Manual...). Cogemos la primera opción.
-            val optionsUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/menu/options?year=$year&make=$encMake&model=$encModel"
-            val idDoc = getXmlDocument(optionsUrl)
-
-            // Buscamos la etiqueta <value> que contiene el ID
-            val idNode = idDoc?.getElementsByTagName("value")?.item(0)
-            val vehicleId = idNode?.textContent
-
-            if (vehicleId == null) {
-                return@withContext ConsumptionData("N/A", "N/A", "N/A")
-            }
-
-            // PASO B: Obtener detalles con el ID
-            val dataUrl = "https://www.fueleconomy.gov/ws/rest/vehicle/$vehicleId"
-            val doc = getXmlDocument(dataUrl) ?: return@withContext ConsumptionData("N/A", "N/A", "N/A")
-
-            // Extraemos MPG (Millas por Galón)
-            val cityMpg = doc.getElementsByTagName("city08").item(0)?.textContent?.toDoubleOrNull() ?: 0.0
-            val highwayMpg = doc.getElementsByTagName("highway08").item(0)?.textContent?.toDoubleOrNull() ?: 0.0
-            val avgMpg = (cityMpg + highwayMpg) / 2
-
-            // Convertimos a Km/L
-            val cityKmpl = mpgToKmpl(cityMpg)
-            val highwayKmpl = mpgToKmpl(highwayMpg)
-            val avgKmpl = mpgToKmpl(avgMpg)
-
-            // Formateamos
-            val cStr = String.format(Locale.US, "%.2f", cityKmpl)
-            val hStr = String.format(Locale.US, "%.2f", highwayKmpl)
-            val aStr = String.format(Locale.US, "%.2f", avgKmpl)
-
-            return@withContext ConsumptionData(cStr, hStr, aStr)
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return@withContext ConsumptionData("0.0", "0.0", "0.0")
-        }
-    }
-
-    // --- AUXILIARES ---
-
-    // Descarga y parsea una lista simple de opciones XML (<menuItem><text>...</text><value>...</value></menuItem>)
-    private fun parseXmlList(urlStr: String): List<String> {
-        val list = mutableListOf<String>()
-        try {
-            val doc = getXmlDocument(urlStr) ?: return emptyList()
-            val nodes = doc.getElementsByTagName("value") // En los menús, 'value' es el nombre (Make/Model)
-
-            for (i in 0 until nodes.length) {
-                nodes.item(i)?.textContent?.let { list.add(it) }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return list
-    }
-
-    // Conexión HTTP genérica que devuelve un Documento XML
-    private fun getXmlDocument(urlStr: String): Document? {
-        return try {
+            val urlStr = "$BASE_URL_ROOT/consumption?make=$encMake&model=$encModel&year=$encYear"
             val url = URL(urlStr)
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "GET"
             conn.connectTimeout = 5000
 
-            val factory = DocumentBuilderFactory.newInstance()
-            val builder = factory.newDocumentBuilder()
-            val doc = builder.parse(conn.inputStream)
-            conn.disconnect()
-            doc
+            // HEADERS ANTI-BLOQUEO
+            conn.setRequestProperty("ngrok-skip-browser-warning", "true")
+            conn.setRequestProperty("User-Agent", "ConsumoApp")
+
+            if (conn.responseCode == 200) {
+                val stream = conn.inputStream
+                val reader = BufferedReader(InputStreamReader(stream))
+                val jsonStr = reader.readText()
+                reader.close()
+                val json = JSONObject(jsonStr)
+
+                if (json.has("found") && json.getBoolean("found")) {
+                    val cityVal = json.optDouble("city_mpg", 0.0)
+                    val hwyVal = json.optDouble("highway_mpg", 0.0)
+                    val avgVal = json.optDouble("avg_mpg", 0.0)
+                    return@withContext ConsumptionData(
+                        String.format(Locale.US, "%.2f", cityVal),
+                        String.format(Locale.US, "%.2f", hwyVal),
+                        String.format(Locale.US, "%.2f", avgVal)
+                    )
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
-            null
         }
+        return@withContext ConsumptionData("0.0", "0.0", "0.0")
     }
 
-    private fun mpgToKmpl(mpg: Double): Double {
-        return mpg * 0.425144
+    // --- FUNCIÓN CHIVATA (SIN TRY-CATCH SILENCIOSO) ---
+    private fun fetchList(urlStr: String): List<String> {
+        // 1. Abrir conexión
+        val url = URL(urlStr)
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "GET"
+        conn.connectTimeout = 8000 // Damos un poco más de tiempo
+
+        // 2. HEADERS MAGICOS
+        conn.setRequestProperty("ngrok-skip-browser-warning", "true")
+        conn.setRequestProperty("User-Agent", "ConsumoApp-Android") // A veces cambiar el User-Agent ayuda
+
+        // 3. VERIFICAR RESPUESTA HTTP
+        if (conn.responseCode != 200) {
+            // Si no es 200, lanzamos error para verlo en el Toast
+            throw Exception("HTTP Error: ${conn.responseCode}")
+        }
+
+        // 4. LEER TEXTO
+        val text = conn.inputStream.bufferedReader().readText()
+
+        // 5. INTENTAR PARSEAR JSON
+        try {
+            val jsonArray = JSONArray(text)
+            val list = mutableListOf<String>()
+            for (i in 0 until jsonArray.length()) {
+                list.add(jsonArray.getString(i))
+            }
+            return list
+        } catch (e: Exception) {
+            // Si falla aquí, es que NO recibimos JSON (probablemente recibimos HTML de Ngrok)
+            // Lanzamos una excepción con los primeros 50 caracteres para ver qué nos mandaron
+            val preview = if (text.length > 50) text.substring(0, 50) else text
+            throw Exception("No es JSON. Recibido: '$preview'")
+        }
     }
 }
