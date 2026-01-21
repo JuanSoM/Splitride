@@ -553,29 +553,44 @@ class MapActivity : AppCompatActivity() {
                     val capacidadTotal = cocheEnLista.getcapacidaddeposito()
                     val porcentajeActual = cocheEnLista.getCapacidadactual()
 
-                    if (capacidadTotal > 0 && porcentajeActual >= 0) {
+                    if (capacidadTotal > 0 && porcentajeActual != -1) {
                         val litrosActuales = (porcentajeActual.toDouble() / 100.0) * capacidadTotal
-                        var nuevosLitros = litrosActuales - litersConsumed
-                        if (nuevosLitros < 0) nuevosLitros = 0.0
-                        val nuevoPorcentaje = ((nuevosLitros / capacidadTotal) * 100).roundToInt()
-                        cocheEnLista.setCapacidadactual(nuevoPorcentaje)
-                        Toast.makeText(this, "Combustible actualizado: -${String.format("%.2f", litersConsumed)} L", Toast.LENGTH_SHORT).show()
-                    }
-                    
-                    val origenStr = originInput.text.toString()
-                    val destinoStr = destInput.text.toString()
-                    val viaje = Usuario.Viaje(
-                        origenStr,
-                        destinoStr,
-                        dist / 1000.0, 
-                        litersConsumed,
-                        cocheEnLista.toString()
-                    )
-                    usuario!!.agregarViaje(viaje)
+                        
+                        // 2️⃣ Regla: Aviso si el viaje consume más de lo disponible
+                        if (litersConsumed > litrosActuales) {
+                            Toast.makeText(this, "Este viaje va a consumir más gasolina de la que queda en el tanque. Se recomienda parar a repostar.", Toast.LENGTH_LONG).show()
+                        }
 
-                    saveManager.actualizarUsuario(usuario!!)
-                } else {
-                     Toast.makeText(this, "Configura el depósito para descontar combustible", Toast.LENGTH_LONG).show()
+                        // 3️⃣ Regla: Restar toda la gasolina, permitiendo negativos
+                        val nuevosLitros = litrosActuales - litersConsumed
+                        val nuevoPorcentaje = ((nuevosLitros / capacidadTotal) * 100).roundToInt()
+
+                        // 1️⃣ Regla: Avisos por cruce de umbral (20% y 10%)
+                        if (porcentajeActual >= 20 && nuevoPorcentaje < 20 && nuevoPorcentaje >= 10) {
+                            Toast.makeText(this, "Aviso: Nivel de gasolina bajo (menor al 20%)", Toast.LENGTH_LONG).show()
+                        } else if (porcentajeActual >= 10 && nuevoPorcentaje < 10) {
+                            Toast.makeText(this, "Alerta Crítica: Nivel de gasolina muy bajo (menor al 10%)", Toast.LENGTH_LONG).show()
+                        }
+
+                        cocheEnLista.setCapacidadactual(nuevoPorcentaje)
+                        
+                        val origenStr = originInput.text.toString()
+                        val destinoStr = destInput.text.toString()
+                        val viaje = Usuario.Viaje(
+                            origenStr,
+                            destinoStr,
+                            dist / 1000.0, 
+                            litersConsumed,
+                            cocheEnLista.toString()
+                        )
+                        usuario!!.agregarViaje(viaje)
+
+                        saveManager.actualizarUsuario(usuario!!)
+                        
+                        Toast.makeText(this, "Combustible actualizado: -${String.format("%.2f", litersConsumed)} L", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "Configura el depósito para descontar combustible", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         }

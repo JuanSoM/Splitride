@@ -171,14 +171,15 @@ public class DepositoActivity extends AppCompatActivity {
         TextView title = view.findViewById(R.id.dialogTitle);
         EditText input = view.findViewById(R.id.dialogInput);
 
-        SpannableString spannableTitle = new SpannableString("Porcentaje actual del depósito (%)");
+        // 4️⃣ Regla: Modificado para permitir añadir gasolina compensando déficit
+        SpannableString spannableTitle = new SpannableString("¿Cuánto porcentaje quieres añadir? (%)");
         spannableTitle.setSpan(new ForegroundColorSpan(Color.WHITE), 0, spannableTitle.length(), 0);
         title.setText(spannableTitle);
-        input.setHint("0 - 100%");
+        input.setHint("Cantidad a repostar");
 
         AlertDialog dialog = new AlertDialog.Builder(this)
                 .setView(view)
-                .setPositiveButton("Aceptar", null)
+                .setPositiveButton("Repostar", null)
                 .setNegativeButton("Cancelar", (d, w) -> d.dismiss())
                 .create();
 
@@ -190,12 +191,13 @@ public class DepositoActivity extends AppCompatActivity {
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String texto = input.getText().toString();
             if (!texto.isEmpty()) {
-                int porcentaje = Integer.parseInt(texto);
-                if (porcentaje < 0) porcentaje = 0;
-                if (porcentaje > 100) porcentaje = 100;
-
+                int añadido = Integer.parseInt(texto);
                 int anterior = llenado;
-                llenado = porcentaje;
+                
+                // 4️⃣ Regla: El nuevo nivel suma lo añadido al nivel actual (que puede ser negativo)
+                llenado = anterior + añadido;
+                if (llenado > 100) llenado = 100; // El tope máximo sigue siendo 100%
+
                 cocheseleccionado.setCapacidadactual(llenado);
 
                 saveManager.actualizarUsuario(usuarioconectado);
@@ -211,7 +213,9 @@ public class DepositoActivity extends AppCompatActivity {
 
         animator.addUpdateListener(animation -> {
             int valor = (int) animation.getAnimatedValue();
-            circle.setState(valor, false);
+            // Clamp para el gráfico circular (no suele soportar negativos visualmente)
+            int valorGrafico = Math.max(0, valor);
+            circle.setState(valorGrafico, false);
             
             // Actualizar color y texto usando la nueva lógica
             actualizarTextoDisplay(valor);
@@ -222,7 +226,9 @@ public class DepositoActivity extends AppCompatActivity {
 
     // Nuevo método para gestionar qué se muestra (% o Litros)
     private void actualizarTextoDisplay(int porcentaje) {
-        int color = interpolateColor(Color.RED, Color.GREEN, porcentaje / 100f);
+        // Clamp del color para evitar valores RGB inválidos con porcentajes negativos
+        float fraction = Math.max(0f, Math.min(1f, porcentaje / 100f));
+        int color = interpolateColor(Color.RED, Color.GREEN, fraction);
         textoporcentaje.setTextColor(color);
 
         if (mostrarEnPorcentaje) {
