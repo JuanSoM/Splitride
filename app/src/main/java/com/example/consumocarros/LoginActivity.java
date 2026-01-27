@@ -45,15 +45,26 @@ public class LoginActivity extends Activity {
                 return;
             }
 
-            Usuario usuario = saveManager.obtenerUsuario(usuarioInput,contrasenaInput);
-            if (usuario != null) {
-                Toast.makeText(this, "Login exitoso. Bienvenido " + usuario.getNombre(), Toast.LENGTH_SHORT).show();
-                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                intent.putExtra("usuario", usuario);
-                startActivity(intent);
-            } else {
-                Toast.makeText(this, "Usuario o contraseña incorrectos", Toast.LENGTH_SHORT).show();
-            }
+            // Deshabilitar el botón mientras se procesa
+            iniciar_sesion.setEnabled(false);
+            Toast.makeText(this, "Conectando...", Toast.LENGTH_SHORT).show();
+
+            saveManager.obtenerUsuario(usuarioInput, contrasenaInput, new SaveManager.LoginCallback() {
+                @Override
+                public void onSuccess(Usuario usuario) {
+                    iniciar_sesion.setEnabled(true);
+                    Toast.makeText(LoginActivity.this, "Login exitoso. Bienvenido " + usuario.getNombre(), Toast.LENGTH_SHORT).show();
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                    intent.putExtra("usuario", usuario);
+                    startActivity(intent);
+                }
+
+                @Override
+                public void onError(String mensaje) {
+                    iniciar_sesion.setEnabled(true);
+                    Toast.makeText(LoginActivity.this, "Usuario o contraseña incorrectos", Toast.LENGTH_SHORT).show();
+                }
+            });
         });
 
         registrarse.setOnClickListener(v ->
