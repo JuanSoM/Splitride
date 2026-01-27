@@ -1,5 +1,7 @@
 package com.example.consumocarros;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.io.Serializable;
 import java.math.BigInteger;
 import java.security.SecureRandom;
@@ -14,9 +16,15 @@ public class Usuario implements Serializable {
     public String apellidos;
     public List<Car> coches;
     public List<Viaje> viajes;
+    
+    @SerializedName("lista_amigos_ids")
     public List<String> listaAmigosIds;
+    
     public Car cochemasusado;
+    
+    @SerializedName("id_usuario")
     private String idUsuario;
+    
     private static SecureRandom random = new SecureRandom();
 
     public Usuario(String contrasena, String usuario, String nombre, String apellidos) {
@@ -123,12 +131,7 @@ public class Usuario implements Serializable {
 
     @Override
     public String toString() {
-        return "Usuario{" +
-                "usuario='" + usuario + '\'' +
-                ", nombre='" + nombre + '\'' +
-                ", apellidos='" + apellidos + '\'' +
-                ", coches=" + coches +
-                '}';
+        return usuario;
     }
 
     // --- Clase Viaje ---

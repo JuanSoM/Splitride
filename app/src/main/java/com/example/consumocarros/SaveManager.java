@@ -194,6 +194,22 @@ public class SaveManager {
     }
 
     /**
+     * Interfaz para callback de búsqueda de usuarios
+     */
+    public interface SearchCallback {
+        void onSuccess(List<Usuario> usuarios);
+        void onError(String mensaje);
+    }
+
+    /**
+     * Interfaz para callback de agregar amigo
+     */
+    public interface AddFriendCallback {
+        void onSuccess(String mensaje);
+        void onError(String mensaje);
+    }
+
+    /**
      * Obtener usuario por credenciales (Login) - Versión asíncrona
      */
     public void obtenerUsuario(String nombreUsuario, String contrasena, LoginCallback callback) {
@@ -258,4 +274,108 @@ public class SaveManager {
     public void guardarUsuario(Usuario usuario) {
         actualizarUsuario(usuario);
     }
+
+    /**
+     * Buscar usuarios por nombre de usuario (asíncrono)
+     */
+    public void buscarUsuarios(String query, String idUsuarioActual, SearchCallback callback) {
+        executor.execute(() -> {
+            try {
+                String urlString = BASE_URL + "usuarios/buscar/?q=" + 
+                    java.net.URLEncoder.encode(query, "UTF-8") + 
+                    "&exclude=" + idUsuarioActual;
+                
+                URL url = new URL(urlString);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+
+                    // La respuesta tiene formato {"results": [...]}
+                    JsonObject jsonResponse = gson.fromJson(response.toString(), JsonObject.class);
+                    JsonArray resultsArray = jsonResponse.getAsJsonArray("results");
+                    
+                    List<Usuario> usuarios = new ArrayList<>();
+                    for (int i = 0; i < resultsArray.size(); i++) {
+                        Usuario usuario = gson.fromJson(resultsArray.get(i), Usuario.class);
+                        usuarios.add(usuario);
+                    }
+                    
+                    conn.disconnect();
+                    mainHandler.post(() -> callback.onSuccess(usuarios));
+                } else {
+                    Log.e(TAG, "Error en búsqueda: " + responseCode);
+                    mainHandler.post(() -> callback.onError("Error al buscar usuarios"));
+                }
+                conn.disconnect();
+            } catch (Exception e) {
+                Log.e(TAG, "Error en buscarUsuarios: " + e.getMessage(), e);
+                mainHandler.post(() -> callback.onError("Error de conexión: " + e.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * Agregar amigo de forma bidireccional (asíncrono)
+     */
+    public void agregarAmigo(String idUsuario, String idAmigo, AddFriendCallback callback) {
+        executor.execute(() -> {
+            try {
+                JsonObject requestJson = new JsonObject();
+                requestJson.addProperty("amigo_id", idAmigo);
+
+                URL url = new URL(BASE_URL + "usuarios/" + idUsuario + "/amigos/");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+
+                // Enviar datos
+                OutputStream os = conn.getOutputStream();
+                os.write(requestJson.toString().getBytes("UTF-8"));
+                os.flush();
+                os.close();
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_CREATED) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+
+                    JsonObject jsonResponse = gson.fromJson(response.toString(), JsonObject.class);
+                    String mensaje = jsonResponse.has("mensaje") ? 
+                        jsonResponse.get("mensaje").getAsString() : 
+                        "Amigo agregado exitosamente";
+                    
+                    conn.disconnect();
+                    mainHandler.post(() -> callback.onSuccess(mensaje));
+                } else {
+                    Log.e(TAG, "Error al agregar amigo: " + responseCode);
+                    mainHandler.post(() -> callback.onError("Error al agregar amigo"));
+                }
+                conn.disconnect();
+            } catch (Exception e) {
+                Log.e(TAG, "Error en agregarAmigo: " + e.getMessage(), e);
+                mainHandler.post(() -> callback.onError("Error de conexión: " + e.getMessage()));
+            }
+        });
+    }
 }
+

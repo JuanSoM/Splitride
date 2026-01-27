@@ -48,20 +48,6 @@ public class SocialActivity extends AppCompatActivity {
         // Aquí podrías cargar la lista de amigos actual en un RecyclerView...
     }
 
-    private void cargarUsuarioActual() {
-        List<Usuario> usuarios = saveManager.cargarUsuarios();
-        for (Usuario u : usuarios) {
-            if (u.getIdUsuario().equals(currentUserId)) {
-                usuarioconectado = u;
-                break;
-            }
-        }
-
-        if (usuarioconectado== null) {
-            Toast.makeText(this, "Error: Usuario actual no encontrado", Toast.LENGTH_SHORT).show();
-        }
-    }
-
     private void mostrarDialogoBusqueda() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         LayoutInflater inflater = getLayoutInflater();
@@ -74,59 +60,65 @@ public class SocialActivity extends AppCompatActivity {
 
         AlertDialog dialog = builder.create();
 
-        // 1. Obtener TODOS los usuarios del JSON
-        List<Usuario> todosLosUsuarios = saveManager.cargarUsuarios();
-
-        // 2. FILTRAR LA LISTA: Quitamos al usuario que está haciendo la búsqueda
-        List<Usuario> usuariosSugeridos = new ArrayList<>();
-
-        if (usuarioconectado != null) {
-            for (Usuario u : todosLosUsuarios) {
-                // Comparamos IDs para no agregarnos a nosotros mismos
-                if (!u.getIdUsuario().equals(usuarioconectado.getIdUsuario())) {
-                    usuariosSugeridos.add(u);
-                }
-            }
-        } else {
-            // Fallback por seguridad si usuarioconectado es null
-            usuariosSugeridos.addAll(todosLosUsuarios);
-        }
-
-        // 3. Configurar el Adaptador
-        // IMPORTANTE: Para que solo salga el nombre, asegúrate de que en tu clase Usuario.java
-
-        // Si no quieres tocar Usuario.java, el adaptador estándar usará toString().
-        ArrayAdapter<Usuario> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, usuariosSugeridos);
+        // Lista que se actualizará con los resultados de búsqueda
+        List<Usuario> usuariosEncontrados = new ArrayList<>();
+        ArrayAdapter<Usuario> adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, usuariosEncontrados);
         listView.setAdapter(adapter);
 
-        // 4. Lógica de filtrado en tiempo real (Buscador)
+        // Lógica de búsqueda en tiempo real
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                adapter.getFilter().filter(s);
+                String query = s.toString().trim();
+                
+                if (query.length() >= 2) {
+                    // Buscar usuarios en la API
+                    saveManager.buscarUsuarios(query, usuarioconectado.getIdUsuario(), new SaveManager.SearchCallback() {
+                        @Override
+                        public void onSuccess(List<Usuario> usuarios) {
+                            usuariosEncontrados.clear();
+                            usuariosEncontrados.addAll(usuarios);
+                            adapter.notifyDataSetChanged();
+                        }
+
+                        @Override
+                        public void onError(String mensaje) {
+                            Toast.makeText(SocialActivity.this, mensaje, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                } else {
+                    usuariosEncontrados.clear();
+                    adapter.notifyDataSetChanged();
+                }
             }
 
             @Override
             public void afterTextChanged(Editable s) {}
         });
 
-        // 5. Click en un resultado
+        // Click en un resultado
         listView.setOnItemClickListener((parent, view, position, id) -> {
-            Usuario usuarioDestino = adapter.getItem(position);
+            Usuario usuarioDestino = usuariosEncontrados.get(position);
 
-            // Confirmar envío de solicitud
-            new AlertDialog.Builder(SocialActivity.this)
+            // Confirmar envío de solicitud con colores personalizados
+            AlertDialog alertDialog = new AlertDialog.Builder(SocialActivity.this)
                     .setTitle("Enviar solicitud")
-                    .setMessage("¿Quieres enviar una solicitud de amistad a " + usuarioDestino.getUsuario() + "?")
-                    .setPositiveButton("Enviar", (dialogInterface, i) -> {
-                        simularEnvioYAceptacion(usuarioDestino);
+                    .setMessage("¿Quieres agregar como amigo a " + usuarioDestino.getUsuario() + "?")
+                    .setPositiveButton("Agregar", (dialogInterface, i) -> {
+                        agregarAmigo(usuarioDestino);
                         dialog.dismiss();
                     })
                     .setNegativeButton("Cancelar", null)
-                    .show();
+                    .create();
+            
+            alertDialog.show();
+            
+            // Cambiar color de los botones después de mostrar el diálogo
+            alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(getResources().getColor(android.R.color.black));
+            alertDialog.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(getResources().getColor(android.R.color.black));
         });
 
         btnCerrar.setOnClickListener(v -> dialog.dismiss());
@@ -135,10 +127,9 @@ public class SocialActivity extends AppCompatActivity {
 
 
     /**
-     * Como no hay backend real, simulamos que enviamos la solicitud y
-     * que el usuario la acepta, actualizando el JSON localmente.
+     * Agregar amigo usando la API (bidireccional)
      */
-    private void simularEnvioYAceptacion(Usuario nuevoAmigo) {
+    private void agregarAmigo(Usuario nuevoAmigo) {
         if (usuarioconectado == null) return;
 
         // Verificar si ya son amigos
@@ -147,19 +138,23 @@ public class SocialActivity extends AppCompatActivity {
             return;
         }
 
-        // 1. Agregar ID del amigo al usuario actual
-        usuarioconectado.agregarAmigo(nuevoAmigo.getIdUsuario());
+        // Llamar a la API para agregar amigo
+        saveManager.agregarAmigo(usuarioconectado.getIdUsuario(), nuevoAmigo.getIdUsuario(), 
+            new SaveManager.AddFriendCallback() {
+                @Override
+                public void onSuccess(String mensaje) {
+                    // Actualizar la lista local del usuario actual
+                    usuarioconectado.agregarAmigo(nuevoAmigo.getIdUsuario());
+                    Toast.makeText(SocialActivity.this, mensaje, Toast.LENGTH_LONG).show();
+                    
+                    // Aquí podrías actualizar tu RecyclerView principal para mostrar el nuevo amigo
+                }
 
-        // 2. (Opcional) Agregar ID del usuario actual al amigo (Amistad bidireccional)
-        nuevoAmigo.agregarAmigo(usuarioconectado.getIdUsuario());
-
-        // 3. Guardar cambios en el JSON usando SaveManager
-        // SaveManager.actualizarUsuario busca por ID y reemplaza
-        saveManager.actualizarUsuario(usuarioconectado);
-        saveManager.actualizarUsuario(nuevoAmigo);
-
-        Toast.makeText(this, "¡Ahora eres amigo de " + nuevoAmigo.getUsuario() + "!", Toast.LENGTH_LONG).show();
-
-        // Aquí podrías actualizar tu RecyclerView principal para mostrar el nuevo amigo
+                @Override
+                public void onError(String mensaje) {
+                    Toast.makeText(SocialActivity.this, mensaje, Toast.LENGTH_SHORT).show();
+                }
+            }
+        );
     }
 }

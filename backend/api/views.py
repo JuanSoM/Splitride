@@ -95,14 +95,56 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    @action(detail=False, methods=['get'], url_path='buscar')
+    def buscar_usuarios(self, request):
+        """Buscar usuarios por nombre de usuario"""
+        query = request.query_params.get('q', '').strip()
+        usuario_actual_id = request.query_params.get('exclude', None)
+        
+        if not query:
+            return Response({'results': []})
+        
+        # Buscar usuarios que contengan el texto en el campo 'usuario'
+        usuarios = Usuario.objects.filter(usuario__icontains=query)
+        
+        # Excluir al usuario actual de los resultados
+        if usuario_actual_id:
+            usuarios = usuarios.exclude(id_usuario=usuario_actual_id)
+        
+        # Limitar a 20 resultados
+        usuarios = usuarios[:20]
+        
+        serializer = self.get_serializer(usuarios, many=True)
+        return Response({'results': serializer.data})
+    
     @action(detail=True, methods=['post'], url_path='amigos')
     def add_friend(self, request, id_usuario=None):
-        """Agregar amigo"""
+        """Agregar amigo de forma bidireccional"""
         usuario = self.get_object()
         amigo_id = request.data.get('amigo_id')
         
-        if amigo_id and amigo_id not in usuario.lista_amigos_ids:
+        if not amigo_id:
+            return Response({'error': 'amigo_id es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            amigo = Usuario.objects.get(id_usuario=amigo_id)
+        except Usuario.DoesNotExist:
+            return Response({'error': 'Usuario amigo no encontrado'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Verificar que no sean el mismo usuario
+        if usuario.id_usuario == amigo_id:
+            return Response({'error': 'No puedes agregarte a ti mismo'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Agregar amigo bidireccionalmente
+        if amigo_id not in usuario.lista_amigos_ids:
             usuario.lista_amigos_ids.append(amigo_id)
             usuario.save()
         
-        return Response({'lista_amigos_ids': usuario.lista_amigos_ids})
+        if usuario.id_usuario not in amigo.lista_amigos_ids:
+            amigo.lista_amigos_ids.append(usuario.id_usuario)
+            amigo.save()
+        
+        return Response({
+            'lista_amigos_ids': usuario.lista_amigos_ids,
+            'mensaje': f'Ahora eres amigo de {amigo.usuario}'
+        })
